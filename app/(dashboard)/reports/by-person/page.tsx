@@ -1,0 +1,347 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+import Link from "next/link"
+import { useAuth } from "@/components/auth-provider"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Spinner } from "@/components/ui/spinner"
+import { toast } from "sonner"
+import { Users, Download, ArrowLeft, Info } from "lucide-react"
+import { formatCurrency } from "@/lib/format"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts"
+
+interface PersonRow {
+  name: string
+  total: number
+  count: number
+  isThirdParty: boolean
+}
+
+interface ByPersonReport {
+  startDate: string
+  endDate: string
+  status: string
+  totalExpenses: number
+  totalAmount: number
+  byPerson: PersonRow[]
+}
+
+const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#06b6d4", "#ec4899", "#84cc16"]
+
+const STATUS_OPTIONS = [
+  { value: "approved", label: "Apenas aprovadas" },
+  { value: "paid", label: "Aprovadas e pagas" },
+  { value: "pending", label: "Pendentes / em correção" },
+  { value: "all", label: "Todas (exceto rejeitadas)" },
+]
+
+export default function ByPersonReportPage() {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<ByPersonReport | null>(null)
+
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date()
+    date.setMonth(date.getMonth() - 1)
+    return date.toISOString().split("T")[0]
+  })
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0])
+  const [status, setStatus] = useState("approved")
+
+  async function generateReport() {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ startDate, endDate, status })
+      const res = await fetch(`/api/reports/by-person?${params.toString()}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || "Erro ao gerar relatório")
+      }
+      const json = await res.json()
+      setData(json)
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao gerar relatório")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Gera automaticamente ao abrir
+  useEffect(() => {
+    generateReport()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function generatePDF() {
+    if (!data) return
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+    const pageWidth = doc.internal.pageSize.getWidth()
+
+    const fmtDate = (d: string) => {
+      const [y, m, day] = d.split("-")
+      return `${day}/${m}/${y}`
+    }
+
+    doc.setFillColor(16, 185, 129)
+    doc.rect(0, 0, pageWidth, 28, "F")
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(16)
+    doc.text("SISTEMA FINANCEIRO RAROTEC", pageWidth / 2, 12, { align: "center" })
+    doc.setFontSize(11)
+    doc.text("Relatório de Gasto Real por Pessoa", pageWidth / 2, 20, { align: "center" })
+
+    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(10)
+    const statusLabel = STATUS_OPTIONS.find((s) => s.value === data.status)?.label || data.status
+    doc.text(`Período: ${fmtDate(data.startDate)} a ${fmtDate(data.endDate)}`, pageWidth / 2, 38, {
+      align: "center",
+    })
+    doc.text(`Filtro: ${statusLabel}`, pageWidth / 2, 44, { align: "center" })
+
+    doc.setFontSize(9)
+    doc.setTextColor(100, 100, 100)
+    doc.text(
+      "Rateio igual entre participantes. Terceiros somados em linha separada. Uso gerencial.",
+      pageWidth / 2,
+      50,
+      { align: "center" },
+    )
+    doc.setTextColor(0, 0, 0)
+
+    autoTable(doc, {
+      startY: 56,
+      head: [["#", "Pessoa", "Despesas", "Gasto Rateado"]],
+      body: data.byPerson.map((p, i) => [
+        String(i + 1),
+        p.isThirdParty ? `${p.name} (terceiros)` : p.name,
+        String(p.count),
+        formatCurrency(p.total),
+      ]),
+      foot: [["", "TOTAL", String(data.totalExpenses), formatCurrency(data.totalAmount)]],
+      headStyles: { fillColor: [16, 185, 129] },
+      footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold" },
+      styles: { fontSize: 9 },
+    })
+
+    doc.save(`relatorio-por-pessoa-${data.startDate}-${data.endDate}.pdf`)
+  }
+
+  const canView = user && ["admin", "financial"].includes(user.role)
+
+  if (user && !canView) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">
+            Você não tem permissão para acessar este relatório.
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const chartData = data?.byPerson.slice(0, 12).map((p) => ({
+    name: p.name.length > 14 ? p.name.slice(0, 12) + "…" : p.name,
+    total: p.total,
+    isThirdParty: p.isThirdParty,
+  }))
+
+  return (
+    <div className="p-4 sm:p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Users className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-semibold text-balance">Gasto Real por Pessoa</h1>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Rateio gerencial do custo das despesas entre as pessoas envolvidas.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/reports">
+            <ArrowLeft className="h-4 w-4" />
+            Relatório de Despesas
+          </Link>
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Filtros</CardTitle>
+          <CardDescription>Defina o período e o status considerado no rateio.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div className="space-y-2">
+              <Label htmlFor="start">Data inicial</Label>
+              <Input id="start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end">Data final</Label>
+              <Input id="end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={generateReport} disabled={loading}>
+              {loading ? <Spinner className="h-4 w-4" /> : null}
+              Gerar relatório
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0 mt-0.5" />
+        <p>
+          Cada despesa é dividida igualmente entre os participantes (solicitante, quem efetuou e pessoas
+          vinculadas). Terceiros não-funcionários são agrupados em uma linha separada. Este relatório é
+          apenas para controle gerencial e não afeta aprovação ou financeiro.
+        </p>
+      </div>
+
+      {loading && !data ? (
+        <div className="flex justify-center py-16">
+          <Spinner className="h-8 w-8" />
+        </div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Total Rateado</p>
+                <p className="text-2xl font-semibold text-primary">{formatCurrency(data.totalAmount)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Despesas consideradas</p>
+                <p className="text-2xl font-semibold">{data.totalExpenses}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-muted-foreground">Pessoas</p>
+                <p className="text-2xl font-semibold">{data.byPerson.length}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={generatePDF} variant="outline" disabled={data.byPerson.length === 0}>
+              <Download className="h-4 w-4" />
+              Exportar PDF
+            </Button>
+          </div>
+
+          {data.byPerson.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                Nenhuma despesa encontrada para os filtros selecionados.
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Gasto por pessoa</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" angle={-35} textAnchor="end" height={60} fontSize={12} />
+                        <YAxis fontSize={12} tickFormatter={(v) => `R$${v}`} />
+                        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                        <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                          {chartData?.map((entry, index) => (
+                            <Cell
+                              key={index}
+                              fill={entry.isThirdParty ? "#94a3b8" : COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Detalhamento</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-muted-foreground">
+                          <th className="py-2 pr-4 font-medium">#</th>
+                          <th className="py-2 pr-4 font-medium">Pessoa</th>
+                          <th className="py-2 pr-4 font-medium text-right">Despesas</th>
+                          <th className="py-2 font-medium text-right">Gasto Rateado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.byPerson.map((p, i) => (
+                          <tr key={`${p.name}-${i}`} className="border-b last:border-0">
+                            <td className="py-2 pr-4 text-muted-foreground">{i + 1}</td>
+                            <td className="py-2 pr-4 font-medium">
+                              {p.name}
+                              {p.isThirdParty && (
+                                <span className="ml-2 text-xs text-muted-foreground">(terceiros)</span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-4 text-right">{p.count}</td>
+                            <td className="py-2 text-right font-medium">{formatCurrency(p.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 font-semibold">
+                          <td className="py-2 pr-4"></td>
+                          <td className="py-2 pr-4">TOTAL</td>
+                          <td className="py-2 pr-4 text-right">{data.totalExpenses}</td>
+                          <td className="py-2 text-right text-primary">{formatCurrency(data.totalAmount)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </>
+      ) : null}
+    </div>
+  )
+}

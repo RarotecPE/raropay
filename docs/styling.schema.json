@@ -1,0 +1,446 @@
+{
+  "schema": {
+    "id": "styling-blueprint",
+    "version": "1.0.0",
+    "language": "pt-BR",
+    "scope": "Somente dados de estilização extraídos do blueprint do projeto: fundamentos de layout, tokens de design (cor, tipografia, forma, espaçamento, efeitos), anatomia visual dos shells, regras visuais de componentes e navegação, branding e PWA.",
+    "outOfScope": [
+      "regras de negócio",
+      "rotas de API e detalhes de implementação",
+      "banco de dados, ORM e armazenamento",
+      "credenciais, segredos e valores de ambiente"
+    ],
+    "placeholders": {
+      "<APP_NAME>": "Nome completo do produto.",
+      "<APP_SHORT_NAME>": "Nome curto do produto (PWA, atalhos).",
+      "<SHORT_APP_DESCRIPTION>": "Descrição curta do produto em uma frase.",
+      "<APP_ICON>": "Ícone principal do app.",
+      "<FAVICON>": "Favicon clássico.",
+      "<APPLE_TOUCH_ICON>": "Ícone para home screen iOS.",
+      "<ICON_NAME>": "Nome do ícone na biblioteca de ícones adotada."
+    }
+  },
+  "foundations": {
+    "document": {
+      "html": {
+        "lang": "pt-BR",
+        "className": "h-full antialiased"
+      },
+      "body": {
+        "defaultTheme": "dark",
+        "className": "min-h-screen bg-app-background text-app-foreground font-sans antialiased",
+        "lightThemeToggle": "Classe .theme-light aplicada no elemento <html> troca todos os tokens de superfície."
+      },
+      "metadata": {
+        "title": "<APP_NAME>",
+        "description": "<SHORT_APP_DESCRIPTION>",
+        "icons": ["<APP_ICON>", "<FAVICON>", "<APPLE_TOUCH_ICON>"]
+      }
+    },
+    "responsive": {
+      "breakpoints": {
+        "mobile": "< 640px",
+        "tablet": "640px - 1023px",
+        "desktop": ">= 1024px",
+        "tailwind": {
+          "sm": "640px",
+          "md": "768px",
+          "lg": "1024px",
+          "xl": "1280px"
+        }
+      },
+      "rules": [
+        "Navegação inferior fixa (bottom navigation) no mobile para destinos de topo.",
+        "Sidebar fixa à esquerda ou navegação horizontal no desktop.",
+        "Alvos interativos com altura mínima de 40px.",
+        "Reservar espaço no layout para barras fixas (header/bottom nav) para não esconder conteúdo.",
+        "Dropdowns devem caber na largura do viewport no mobile (max-w com fallback para calc(100vw - 2rem))."
+      ]
+    }
+  },
+  "tokens": {
+    "color": {
+      "modes": {
+        "dark": {
+          "default": true,
+          "background": "#0B0F17",
+          "surface": "#101726",
+          "surfaceElevated": "#1A2236",
+          "foreground": "#E2E8F0",
+          "mutedForeground": "#94A3B8",
+          "border": "#1E293B",
+          "primary": "#2563EB",
+          "primaryForeground": "#FFFFFF",
+          "success": "#059669",
+          "warning": "#D97706",
+          "danger": "#E11D48"
+        },
+        "light": {
+          "className": "theme-light",
+          "background": "#F5F7FB",
+          "surface": "#FFFFFF",
+          "surfaceElevated": "#EEF2F7",
+          "foreground": "#1F2937",
+          "mutedForeground": "#64748B",
+          "border": "#CBD5E1",
+          "primary": "#2563EB",
+          "primaryForeground": "#FFFFFF",
+          "success": "#047857",
+          "warning": "#B45309",
+          "danger": "#BE123C"
+        }
+      },
+      "implementation": {
+        "cssVariableFormat": "--app-<nome-do-token> em kebab-case",
+        "cssVariables": [
+          "--app-background",
+          "--app-surface",
+          "--app-surface-elevated",
+          "--app-foreground",
+          "--app-muted-foreground",
+          "--app-border",
+          "--app-primary",
+          "--app-primary-foreground",
+          "--app-success",
+          "--app-warning",
+          "--app-danger"
+        ],
+        "tailwindUtilities": [
+          "bg-app-background",
+          "bg-app-surface",
+          "bg-app-surface-elevated",
+          "text-app-foreground",
+          "text-app-muted-foreground",
+          "border-app-border",
+          "bg-app-primary",
+          "text-app-primary-foreground",
+          "text-app-primary",
+          "bg-app-success",
+          "bg-app-warning",
+          "bg-app-danger"
+        ],
+        "opacityModifier": "Suportado via color-mix pelo Tailwind (ex.: bg-app-primary/10 para tint suave do primário)."
+      }
+    },
+    "typography": {
+      "fontSans": "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      "fontMono": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
+      "letterSpacing": "0",
+      "bodySize": "14px - 16px",
+      "headingWeight": "600 - 700",
+      "scale": {
+        "xs": "0.75rem (12px)",
+        "sm": "0.875rem (14px) — corpo padrão de UI",
+        "base": "1rem (16px)",
+        "lg": "1.125rem (18px)",
+        "xl": "1.25rem (20px)",
+        "2xl": "1.5rem (24px)"
+      },
+      "tailwindUtilities": ["font-sans", "font-mono", "text-sm", "text-base", "font-semibold", "font-bold", "tracking-normal"]
+    },
+    "shape": {
+      "radiusSmall": "6px",
+      "radiusMedium": "8px",
+      "radiusLarge": "12px",
+      "pill": "999px",
+      "tailwindUtilities": ["rounded-app-sm", "rounded-app-md", "rounded-app-lg", "rounded-app-pill"]
+    },
+    "spacing": {
+      "pageXMobile": "1rem (px-4)",
+      "pageXDesktop": "1.5rem - 2rem (px-6 / px-8)",
+      "pageY": "1.25rem - 1.5rem (py-5 / py-6)",
+      "sectionGap": "1rem - 1.5rem (gap-4 a gap-6)",
+      "controlHeight": "2.5rem (h-10) a 2.75rem (h-11)",
+      "shellSizes": {
+        "sidebarWidth": "16rem (w-64)",
+        "headerHeight": "4rem (h-16)",
+        "bottomNavHeight": "4rem (h-16)"
+      }
+    },
+    "effects": {
+      "focusRing": "outline 2px solid {tokens.color.primary} com outline-offset de 2px (focus-visible)",
+      "shadowElevated": "0 24px 70px rgba(15, 23, 42, 0.18)",
+      "backdropBlur": "16px - 18px",
+      "transition": "150ms - 200ms ease",
+      "tailwindUtilities": [
+        "shadow-app-elevated",
+        "backdrop-blur-app-overlay",
+        "transition-colors",
+        "duration-150",
+        "duration-200",
+        "ease-out"
+      ]
+    }
+  },
+  "layout": {
+    "authenticatedShell": {
+      "desktop": {
+        "structure": "Sidebar fixa à esquerda + header sticky no topo + área de conteúdo rolável.",
+        "sidebar": {
+          "width": "16rem (w-64)",
+          "position": "fixed-left",
+          "surface": "bg-app-surface, border-r border-app-border",
+          "content": ["brand-area", "primary-navigation", "secondary-or-admin-navigation"]
+        },
+        "header": {
+          "position": "sticky-top (top-0 z-40)",
+          "height": "4rem (h-16)",
+          "surface": "bg-app-surface/80 backdrop-blur-app-overlay border-b border-app-border",
+          "content": [
+            "current-page-title",
+            "notifications-button",
+            "theme-toggle",
+            "applications-menu",
+            "account-menu"
+          ]
+        },
+        "main": {
+          "className": "flex-1 px-4 py-5 sm:px-6 lg:px-8 lg:py-6",
+          "rule": "O conteúdo é dono do próprio layout interno; o shell fornece apenas espaçamento e navegação."
+        }
+      },
+      "mobile": {
+        "structure": "Header compacto sticky + navegação inferior fixa.",
+        "drawer": {
+          "behavior": "Sidebar oculta por padrão; abre como overlay drawer com backdrop (bg-slate-950/60 backdrop-blur-app-overlay)."
+        },
+        "bottomNavigation": {
+          "position": "fixed-bottom (bottom-0 inset-x-0 z-40)",
+          "height": "4rem (h-16)",
+          "surface": "bg-app-surface border-t border-app-border",
+          "safeArea": "padding-bottom: env(safe-area-inset-bottom)",
+          "items": "Destinos primários; grupos podem abrir sub-itens flutuantes (floating circular ou sheet)."
+        },
+        "main": {
+          "paddingBottom": "calc(4rem + env(safe-area-inset-bottom)) — espaço reservado para a bottom nav"
+        }
+      },
+      "sessionStates": {
+        "loading": "Loading de tela cheia ou da área de conteúdo (spinner ou skeleton com dimensões estáveis).",
+        "authenticated": "Renderiza shell e children.",
+        "unauthenticated": "Redireciona para a rota pública/autenticação."
+      }
+    },
+    "publicShell": {
+      "useCases": ["login", "password-recovery", "public-entry", "access-callback"],
+      "structure": "Brand header + área de conteúdo centralizada ou dividida.",
+      "desktop": {
+        "layout": "Grid de duas colunas: conteúdo explicativo + painel compacto para o formulário.",
+        "panelWidth": "26rem a 30rem",
+        "panelSurface": "bg-app-surface border border-app-border rounded-app-lg shadow-app-elevated"
+      },
+      "mobile": {
+        "layout": "Coluna única com brand header e painel do formulário (px-4)."
+      },
+      "background": "Fundo sutil sólido ou radial derivado de bg-app-background (ex.: radial-gradient suave com tint de bg-app-primary em 6-10%)."
+    }
+  },
+  "components": {
+    "buttons": {
+      "variants": {
+        "primary": {
+          "style": "Fundo primário, texto primário-inverso, peso semibold.",
+          "tailwind": "inline-flex h-10 items-center justify-center gap-2 rounded-app-md bg-app-primary px-4 text-sm font-semibold text-app-primary-foreground transition-colors duration-150 hover:brightness-110"
+        },
+        "secondary": {
+          "style": "Superfície elevada, borda do tema, texto padrão.",
+          "tailwind": "inline-flex h-10 items-center justify-center gap-2 rounded-app-md border border-app-border bg-app-surface-elevated px-4 text-sm font-semibold text-app-foreground transition-colors hover:bg-app-surface"
+        },
+        "ghost": {
+          "style": "Sem fundo; hover com superfície elevada.",
+          "tailwind": "inline-flex h-10 items-center justify-center gap-2 rounded-app-md px-4 text-sm font-semibold text-app-muted-foreground transition-colors hover:bg-app-surface-elevated hover:text-app-foreground"
+        },
+        "danger": {
+          "style": "Fundo de perigo, texto primário-inverso; usar label em texto.",
+          "tailwind": "inline-flex h-10 items-center justify-center gap-2 rounded-app-md bg-app-danger px-4 text-sm font-semibold text-app-primary-foreground transition-colors hover:brightness-110"
+        },
+        "icon": {
+          "style": "Botão quadrado somente com ícone; exige aria-label e title.",
+          "tailwind": "inline-flex h-10 w-10 items-center justify-center rounded-app-md text-app-muted-foreground transition-colors hover:bg-app-surface-elevated hover:text-app-foreground"
+        }
+      },
+      "states": {
+        "default": "Cor base da variante.",
+        "hover": "brightness-110 (preenchidos) ou superfície elevada (ghost/secondary).",
+        "focus-visible": "Anel de foco: {tokens.effects.focusRing}.",
+        "disabled": "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none.",
+        "loading": "Spinner substituindo o ícone, altura estável mantida (sem mudança de layout)."
+      },
+      "rules": [
+        "Usar ícones para ações compactas e repetitivas.",
+        "Usar label em texto para ações destrutivas ou de alta importância.",
+        "Manter altura do botão estável em todos os estados (h-10 a h-11)."
+      ]
+    },
+    "fields": {
+      "types": ["text", "number", "date", "select", "textarea", "checkbox", "radio", "file"],
+      "base": {
+        "input": "flex h-10 w-full rounded-app-md border border-app-border bg-app-surface px-3 text-sm text-app-foreground placeholder:text-app-muted-foreground transition-colors focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
+        "label": "text-sm font-medium text-app-foreground",
+        "hint": "text-xs text-app-muted-foreground",
+        "error": "text-xs font-medium text-app-danger + border-app-danger no campo"
+      },
+      "rules": [
+        "Inputs ocupam largura total por padrão dentro de formulários.",
+        "Estado de foco deve ser visível nos dois temas (anel de foco padrão do sistema).",
+        "Estado desabilitado reduz contraste (opacity-60) e usa cursor not-allowed."
+      ]
+    },
+    "surfaces": {
+      "panel": {
+        "use": "Superfície reutilizável com borda para formulários e conteúdo agrupado.",
+        "tailwind": "rounded-app-lg border border-app-border bg-app-surface p-4 sm:p-6"
+      },
+      "card": {
+        "use": "Itens de dados repetidos ou resumos compactos.",
+        "tailwind": "rounded-app-lg border border-app-border bg-app-surface p-4 transition-colors hover:border-app-muted-foreground/30"
+      },
+      "modal": {
+        "use": "Overlay centralizado com backdrop, max-width e gerenciamento de scroll.",
+        "tailwind": "backdrop: fixed inset-0 bg-slate-950/60 backdrop-blur-app-overlay | container: mx-auto w-full max-w-lg rounded-app-lg border border-app-border bg-app-surface shadow-app-elevated | body com overflow-y-auto max-h-[80vh]"
+      },
+      "dropdown": {
+        "use": "Popover ancorado com fechamento por clique fora e Escape.",
+        "tailwind": "absolute z-50 w-56 max-w-[calc(100vw-2rem)] rounded-app-md border border-app-border bg-app-surface-elevated p-1 shadow-app-elevated"
+      }
+    },
+    "dataDisplay": {
+      "table": {
+        "use": "Linhas densas e escaneáveis; header sticky quando útil.",
+        "tailwind": "header: sticky top-0 bg-app-surface text-left text-xs font-semibold uppercase tracking-wide text-app-muted-foreground | row: border-b border-app-border hover:bg-app-surface-elevated | cell: px-3 py-2 text-sm"
+      },
+      "badge": {
+        "use": "Label pequena de status ou categoria com cores semânticas.",
+        "tailwind": "inline-flex items-center gap-1 rounded-app-pill px-2 py-0.5 text-xs font-semibold | cores: bg-app-success/10 text-app-success, bg-app-warning/10 text-app-warning, bg-app-danger/10 text-app-danger, bg-app-primary/10 text-app-primary"
+      },
+      "pagination": {
+        "use": "Anterior, próxima e metadados de página.",
+        "tailwind": "flex items-center justify-between gap-4 text-sm text-app-muted-foreground com botões ghost"
+      },
+      "emptyState": {
+        "use": "Mensagem neutra curta + ação primária opcional.",
+        "tailwind": "flex flex-col items-center gap-3 rounded-app-lg border border-dashed border-app-border p-8 text-center text-sm text-app-muted-foreground"
+      },
+      "loadingState": {
+        "use": "Spinner ou skeleton com dimensões estáveis.",
+        "tailwind": "spinner: h-5 w-5 animate-spin rounded-full border-2 border-app-border border-t-app-primary | skeleton: animate-pulse rounded-app-md bg-app-surface-elevated"
+      }
+    },
+    "feedback": {
+      "toast": {
+        "use": "Feedback temporário não bloqueante.",
+        "tailwind": "pointer-events-auto rounded-app-md border border-app-border bg-app-surface-elevated px-4 py-3 text-sm text-app-foreground shadow-app-elevated (fixo em canto superior/inferior direito; auto-dismiss)"
+      },
+      "inlineAlert": {
+        "use": "Feedback contextual persistente.",
+        "tailwind": "rounded-app-md border px-3 py-2 text-sm com pares semânticos: border-app-success/30 bg-app-success/10 text-app-success (idem warning/danger/primary)"
+      },
+      "banner": {
+        "use": "Aviso global de ambiente ou sistema (ex.: banner de ambiente).",
+        "tailwind": "flex h-9 items-center justify-center bg-app-warning/15 px-4 text-xs font-semibold text-app-warning"
+      }
+    },
+    "identity": {
+      "avatar": {
+        "use": "Imagem com fallback de iniciais.",
+        "tailwind": "h-8 w-8 rounded-full bg-app-surface-elevated text-xs font-semibold text-app-muted-foreground flex items-center justify-center overflow-hidden"
+      },
+      "brandMark": {
+        "use": "Logo + nome do produto opcional.",
+        "tailwind": "flex items-center gap-2 text-sm font-bold text-app-foreground"
+      },
+      "applicationMenu": {
+        "use": "Lista de aplicações relacionadas com logo, nome e affordance de link externo.",
+        "tailwind": "item: flex items-center gap-3 rounded-app-md px-3 py-2 text-sm transition-colors hover:bg-app-surface-elevated"
+      }
+    }
+  },
+  "navigation": {
+    "model": {
+      "itemKinds": ["leaf", "group"],
+      "fields": ["href", "id", "label", "icon (<ICON_NAME>)", "requiresAdmin", "children"],
+      "examples": {
+        "leaf": { "kind": "leaf", "href": "/dashboard", "label": "Dashboard", "icon": "<ICON_NAME>", "requiresAdmin": false },
+        "group": {
+          "kind": "group",
+          "id": "group-a",
+          "label": "Grupo A",
+          "icon": "<ICON_NAME>",
+          "children": [
+            { "kind": "leaf", "href": "/group-a/item-1", "label": "Item 1", "icon": "<ICON_NAME>", "requiresAdmin": false }
+          ]
+        },
+        "adminLeaf": { "kind": "leaf", "href": "/settings", "label": "Configurações", "icon": "<ICON_NAME>", "requiresAdmin": true }
+      }
+    },
+    "activeState": {
+      "rule": "Um item é ativo quando o path atual é igual ao href ou começa com href seguido de '/'.",
+      "groupRule": "Um grupo é ativo quando qualquer filho está ativo.",
+      "styles": {
+        "active": "bg-app-primary/10 text-app-primary (ou bg-app-surface-elevated text-app-foreground para padrão neutro)",
+        "inactive": "text-app-muted-foreground hover:bg-app-surface-elevated hover:text-app-foreground",
+        "item": "flex h-10 items-center gap-3 rounded-app-md px-3 text-sm font-medium transition-colors"
+      }
+    },
+    "desktop": {
+      "pattern": "sidebar-tree ou centered-header-tabs",
+      "groupBehavior": "Grupos expandíveis com estado de abertura persistido localmente enquanto montados.",
+      "expandIcon": "Chevron rotacionando 90deg com transition-transform duration-150"
+    },
+    "mobile": {
+      "pattern": "bottom-navigation",
+      "groupBehavior": "Itens agrupados abrem sub-navegação flutuante circular ou em sheet.",
+      "accessibility": "Todo controle somente com ícone deve ter aria-label e title.",
+      "item": "flex min-h-[40px] flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium"
+    }
+  },
+  "branding": {
+    "name": "<APP_NAME>",
+    "shortName": "<APP_SHORT_NAME>",
+    "description": "<SHORT_APP_DESCRIPTION>",
+    "assets": {
+      "logo": "/logo.png",
+      "logoSvg": "/logo.svg",
+      "favicon": "/favicon.ico",
+      "appIcon": "/app-icon.png"
+    },
+    "metadata": {
+      "titleTemplate": "<APP_NAME>",
+      "defaultTitle": "<APP_NAME>",
+      "description": "<SHORT_APP_DESCRIPTION>"
+    }
+  },
+  "pwa": {
+    "manifest": {
+      "name": "<APP_NAME>",
+      "short_name": "<APP_SHORT_NAME>",
+      "description": "<SHORT_APP_DESCRIPTION>",
+      "start_url": "/dashboard",
+      "scope": "/",
+      "display": "standalone",
+      "background_color": "#0B0F17",
+      "theme_color": "#0F172A",
+      "icons": [
+        { "src": "/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+      ]
+    },
+    "installPrompt": {
+      "style": "Banner dismissível usando a superfície de toast ({components.feedback.toast}) exibido quando o navegador expõe beforeinstallprompt."
+    }
+  },
+  "quality": {
+    "stylingValidation": [
+      "JSON parseia com sucesso.",
+      "Nenhum termo de negócio específico do produto pode aparecer.",
+      "Nenhum caminho de serviço real, tabela, credencial ou URL privada pode aparecer.",
+      "Cobertura obrigatória: fundamentos, tokens (cor/tipografia/forma/espaçamento/efeitos), shells desktop+mobile, componentes, navegação, branding e PWA.",
+      "Tokens de cor devem estar definidos para os dois modos: dark (padrão) e light (.theme-light)."
+    ],
+    "files": {
+      "schema": "docs/styling.schema.json",
+      "implementedTokens": "src/app/globals.css",
+      "rootLayout": "src/app/layout.tsx"
+    }
+  }
+}

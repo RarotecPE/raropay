@@ -1,0 +1,126 @@
+import { NextResponse } from "next/server"
+import { getSession } from "@/lib/auth"
+import { sql } from "@/lib/db"
+
+// GET - Listar solicitações de análise
+export async function GET(request: Request) {
+  try {
+    const user = await getSession()
+    if (!user) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const invoiceId = searchParams.get('invoice_id')
+    const employeeId = searchParams.get('employee_id')
+
+    let requests
+
+    if (['admin', 'financial'].includes(user.role)) {
+      // Financeiro/Admin vê todas ou filtra por fatura
+      if (invoiceId) {
+        requests = await sql`
+          SELECT iar.*, 
+                 u.name as employee_name,
+                 ci.reference_name as invoice_name,
+                 (SELECT COUNT(*) FROM invoice_analysis_messages WHERE request_id = iar.id AND read_at IS NULL AND sender_id != ${user.id}) as unread_count
+          FROM invoice_analysis_requests iar
+          JOIN users u ON u.id = iar.employee_id
+          JOIN card_invoices ci ON ci.id = iar.invoice_id
+          WHERE iar.invoice_id = ${parseInt(invoiceId)}
+          ORDER BY iar.created_at DESC
+        `
+      } else {
+        requests = await sql`
+          SELECT iar.*, 
+                 u.name as employee_name,
+                 ci.reference_name as invoice_name,
+                 (SELECT COUNT(*) FROM invoice_analysis_messages WHERE request_id = iar.id AND read_at IS NULL AND sender_id != ${user.id}) as unread_count
+          FROM invoice_analysis_requests iar
+          JOIN users u ON u.id = iar.employee_id
+          JOIN card_invoices ci ON ci.id = iar.invoice_id
+          ORDER BY iar.created_at DESC
+        `
+      }
+    } else {
+      // Funcionário vê apenas suas próprias solicitações
+      requests = await sql`
+        SELECT iar.*, 
+               u.name as employee_name,
+               ci.reference_name as invoice_name,
+               (SELECT COUNT(*) FROM invoice_analysis_messages WHERE request_id = iar.id AND read_at IS NULL AND sender_id != ${user.id}) as unread_count
+        FROM invoice_analysis_requests iar
+        JOIN users u ON u.id = iar.employee_id
+        JOIN card_invoices ci ON ci.id = iar.invoice_id
+        WHERE iar.employee_id = ${user.id}
+        ORDER BY iar.created_at DESC
+      `
+    }
+
+    return NextResponse.json(requests)
+  } catch (error) {
+    console.error("Erro ao buscar solicitações:", error)
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+  }
+}
+
+// POST - Criar nova solicitação de análise
+export async function POST(request: Request) {
+  try {
+    const user = await getSession()
+    if (!user) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+    }
+
+    if (!['admin', 'financial'].includes(user.role)) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { invoice_id, employee_id, subject, message, attachments, linked_expenses } = body
+
+    if (!invoice_id || !employee_id || !subject || !message) {
+      return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
+    }
+
+    // Criar a solicitação
+    const result = await sql`
+      INSERT INTO invoice_analysis_requests (invoice_id, employee_id, requester_id, subject, status)
+      VALUES (${invoice_id}, ${employee_id}, ${user.id}, ${subject}, 'pending')
+      RETURNING *
+    `
+
+    const requestId = result[0].id
+
+    // Criar a mensagem inicial
+    await sql`
+      INSERT INTO invoice_analysis_messages (request_id, sender_id, message)
+      VALUES (${requestId}, ${user.id}, ${message})
+    `
+
+    // Adicionar anexos se houver
+    if (attachments && attachments.length > 0) {
+      for (const attachment of attachments) {
+        await sql`
+          INSERT INTO invoice_analysis_attachments (request_id, message_id, file_name, file_path, file_type, file_size, uploaded_by)
+          VALUES (${requestId}, NULL, ${attachment.file_name}, ${attachment.file_path}, ${attachment.file_type}, ${attachment.file_size}, ${user.id})
+        `
+      }
+    }
+
+    // Vincular despesas à solicitação (se houver)
+    if (linked_expenses && linked_expenses.length > 0) {
+      for (const expense of linked_expenses) {
+        await sql`
+          INSERT INTO invoice_analysis_expenses (request_id, expense_id, reason)
+          VALUES (${requestId}, ${expense.expense_id}, ${expense.reason || null})
+        `
+      }
+    }
+
+    return NextResponse.json(result[0], { status: 201 })
+  } catch (error) {
+    console.error("Erro ao criar solicitação:", error)
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 })
+  }
+}
