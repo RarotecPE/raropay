@@ -2073,7 +2073,7 @@ return (
           </CardHeader>
           <CardContent>
             {expense.receipt_pathname || expense.receipt_url ? (() => {
-              // Para blobs privados, usar a API /api/file que usa get() do Vercel Blob
+              // Para arquivos privados, usar a API /api/file
               const storedPath = expense.receipt_pathname || expense.receipt_url
               const isPdf = storedPath?.toLowerCase().endsWith('.pdf')
               // Usar API /api/file?pathname= para servir arquivos privados

@@ -21,7 +21,7 @@ function defaultRedirectForRole(user: SessionUser) {
 
 function loginUrl(pathname: string) {
   const next = pathname && pathname !== "/login" ? pathname : "/dashboard"
-  return `/login?next=${encodeURIComponent(next)}`
+  return `/api/auth/raronexus/start?next=${encodeURIComponent(next)}`
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
 
     if (!user && !isPublicPath) {
-      router.replace(loginUrl(pathname))
+      window.location.replace(loginUrl(pathname))
       return
     }
 
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.status === 401 && url.startsWith("/api/") && !url.startsWith("/api/auth/")) {
         await originalFetch("/api/auth/logout", { method: "POST" })
         setUser(null)
-        router.replace(loginUrl(window.location.pathname))
+        window.location.replace(loginUrl(window.location.pathname))
       }
 
       return response

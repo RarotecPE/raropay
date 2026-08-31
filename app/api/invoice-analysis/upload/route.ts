@@ -1,12 +1,12 @@
-import { put } from '@vercel/blob'
 import { type NextRequest, NextResponse } from 'next/server'
 import { getSession } from "@/lib/auth"
+import { putFile } from "@/lib/r2-storage"
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getSession()
     if (!user) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+      return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 })
     }
 
     const formData = await request.formData()
@@ -16,29 +16,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
     }
 
-    // Validar tipo de arquivo (apenas PDF e imagens)
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Tipo de arquivo não permitido. Use PDF ou imagens.' }, { status: 400 })
+      return NextResponse.json({ error: 'Tipo de arquivo nao permitido. Use PDF ou imagens.' }, { status: 400 })
     }
 
-    // Validar tamanho (máximo 10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      return NextResponse.json({ error: 'Arquivo muito grande. Máximo 10MB.' }, { status: 400 })
+      return NextResponse.json({ error: 'Arquivo muito grande. Maximo 10MB.' }, { status: 400 })
     }
 
-    // Upload para Vercel Blob
     const timestamp = Date.now()
     const fileName = `invoice-analysis/${user.id}/${timestamp}-${file.name}`
-    
-    const blob = await put(fileName, file, {
-      access: 'private',
-    })
+    const storedFile = await putFile(fileName, file)
 
     return NextResponse.json({
       file_name: file.name,
-      file_path: blob.pathname,
+      file_path: storedFile.pathname,
       file_type: file.type,
       file_size: file.size
     })

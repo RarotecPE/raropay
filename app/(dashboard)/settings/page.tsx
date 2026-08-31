@@ -732,11 +732,11 @@ body: JSON.stringify({
                         </div>
                       </div>
                       
-                      {/* Arquivos (Vercel Blob) */}
+                      {/* Arquivos (Cloudflare R2) */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <Cloud className="h-4 w-4 text-purple-600" />
-                          <span className="font-medium">Arquivos (Vercel Blob)</span>
+                          <span className="font-medium">Arquivos (Cloudflare R2)</span>
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between items-center text-sm">
