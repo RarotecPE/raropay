@@ -1,9 +1,9 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
-import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { KeyRound } from "lucide-react"
+import { useBranding } from "@/hooks/use-branding"
 
 function sanitizeNextPath(next: string | null) {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/api/")) {
@@ -16,15 +16,17 @@ function sanitizeNextPath(next: string | null) {
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const branding = useBranding()
   const nextPath = useMemo(() => sanitizeNextPath(searchParams.get("next")), [searchParams])
   const [checking, setChecking] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [silentAttempt, setSilentAttempt] = useState(Date.now())
+  const [silentAttempt, setSilentAttempt] = useState<number | null>(null)
   const popupRef = useRef<Window | null>(null)
   const popupTimerRef = useRef<ReturnType<typeof window.setInterval> | null>(null)
 
   const silentSsoUrl = useMemo(() => {
+    if (!silentAttempt) return null
     return `/api/auth/raronexus/start?mode=silent&next=${encodeURIComponent(nextPath)}&attempt=${silentAttempt}`
   }, [nextPath, silentAttempt])
 
@@ -136,22 +138,17 @@ function LoginContent() {
 
   return (
     <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
-      {checking && <iframe title="Verificacao RaroNexus" src={silentSsoUrl} className="hidden" />}
+      {checking && silentSsoUrl && <iframe title="Verificacao RaroNexus" src={silentSsoUrl} className="hidden" />}
 
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-4">
-          <Image
-            src="/images/logo-rarotec.png"
-            alt="RaroPay"
-            width={64}
-            height={64}
+          <img
+            src={branding.logoUrl}
+            alt={branding.name}
             className="mx-auto h-16 w-16 rounded-2xl bg-white object-contain"
-            priority
           />
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-normal">
-              Raro<span className="text-blue-400">Pay</span>
-            </h1>
+            <h1 className="text-3xl font-semibold tracking-normal">{branding.name}</h1>
             <p className="text-sm text-slate-300">
               Entre com sua conta RaroNexus para acessar a plataforma.
             </p>

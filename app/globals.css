@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Tema Azul Moderno - Rarotec */
+  /* Tema Azul Moderno - Raropay */
   --background: oklch(0.98 0.002 240);
   --foreground: oklch(0.15 0.02 240);
   --card: oklch(1 0 0);

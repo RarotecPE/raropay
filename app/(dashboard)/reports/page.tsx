@@ -23,6 +23,7 @@ import {
   PieChart
 } from "lucide-react"
 import { formatCurrency } from "@/lib/format"
+import { DEFAULT_BRANDING, type AppBranding } from "@/lib/branding"
 import { 
   BarChart, 
   Bar, 
@@ -47,6 +48,16 @@ interface ExpenseItem {
   state: string
   municipality: string
   user_name: string
+}
+
+async function fetchBranding(): Promise<AppBranding> {
+  try {
+    const response = await fetch("/api/branding", { cache: "no-store" })
+    const data = await response.json()
+    return data?.branding ?? DEFAULT_BRANDING
+  } catch {
+    return DEFAULT_BRANDING
+  }
 }
 
 interface ReportData {
@@ -263,11 +274,13 @@ export default function ReportsPage() {
       doc.setFillColor(...lightBlue)
       doc.rect(0, 50, pageWidth, 3, 'F')
       
+      const branding = await fetchBranding()
+
       // Adicionar logo na área branca (contraste garantido)
       try {
         const logoImg = new Image()
         logoImg.crossOrigin = 'anonymous'
-        logoImg.src = '/images/logo-rarotec.png'
+        logoImg.src = branding.logoUrl
         await new Promise((resolve, reject) => {
           logoImg.onload = resolve
           logoImg.onerror = reject
@@ -288,7 +301,7 @@ export default function ReportsPage() {
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
       doc.setFont("helvetica", "bold")
-      doc.text("SISTEMA FINANCEIRO RAROTEC", 130, 18, { align: "center" })
+      doc.text(branding.name.toUpperCase(), 130, 18, { align: "center" })
       
       // Subtítulo
       doc.setFontSize(12)
@@ -672,7 +685,7 @@ export default function ReportsPage() {
         doc.setTextColor(156, 163, 175)
         doc.setFont("helvetica", "normal")
         doc.text(
-          `Sistema Financeiro Rarotec - Documento gerado em ${new Date().toLocaleString('pt-BR')}`,
+          `${branding.name} - Documento gerado em ${new Date().toLocaleString('pt-BR')}`,
           14,
           pageHeight - 8
         )

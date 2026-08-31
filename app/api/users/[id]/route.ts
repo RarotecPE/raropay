@@ -30,6 +30,7 @@ export async function PATCH(
     const {
       name,
       email,
+      phone,
       role,
       department,
       active,
@@ -40,6 +41,15 @@ export async function PATCH(
     } = body
 
     const isActive = active !== undefined ? active : is_active
+    const nextName = name ?? null
+    const nextEmail = email ?? null
+    const nextPhone = phone ?? null
+    const nextRole = role ?? null
+    const nextDepartment = department ?? null
+    const nextActive = isActive ?? null
+    const nextMealVoucherEnabled = meal_voucher_enabled ?? null
+    const nextMealVoucherLimit = meal_voucher_limit ?? null
+    const nextTransportVoucherEnabled = transport_voucher_enabled ?? null
 
     const [existingUser] = await sql`
       SELECT id FROM users WHERE id = ${userId}
@@ -49,9 +59,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
-    if (email) {
+    if (nextEmail) {
       const [emailInUse] = await sql`
-        SELECT id FROM users WHERE email = ${email} AND id != ${userId}
+        SELECT id FROM users WHERE email = ${nextEmail} AND id != ${userId}
       `
       if (emailInUse) {
         return NextResponse.json({ error: "Email já em uso" }, { status: 400 })
@@ -60,17 +70,18 @@ export async function PATCH(
 
     const [updatedUser] = await sql`
       UPDATE users SET
-        name = COALESCE(${name}, name),
-        email = COALESCE(${email}, email),
-        role = COALESCE(${role}, role),
-        department = ${department || null},
-        active = COALESCE(${isActive}, active),
-        meal_voucher_enabled = COALESCE(${meal_voucher_enabled}, meal_voucher_enabled),
-        meal_voucher_limit = COALESCE(${meal_voucher_limit}, meal_voucher_limit),
-        transport_voucher_enabled = COALESCE(${transport_voucher_enabled}, transport_voucher_enabled),
+        name = COALESCE(${nextName}, name),
+        email = COALESCE(${nextEmail}, email),
+        phone = COALESCE(${nextPhone}, phone),
+        role = COALESCE(${nextRole}, role),
+        department = COALESCE(${nextDepartment}, department),
+        active = COALESCE(${nextActive}, active),
+        meal_voucher_enabled = COALESCE(${nextMealVoucherEnabled}, meal_voucher_enabled),
+        meal_voucher_limit = COALESCE(${nextMealVoucherLimit}, meal_voucher_limit),
+        transport_voucher_enabled = COALESCE(${nextTransportVoucherEnabled}, transport_voucher_enabled),
         updated_at = NOW()
       WHERE id = ${userId}
-      RETURNING id, name, email, role, department, active,
+      RETURNING id, name, email, phone, role, department, active,
                 meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, created_at
     `
 

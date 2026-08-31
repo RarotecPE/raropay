@@ -143,7 +143,7 @@ export default function DashboardPage() {
             Olá, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-muted-foreground">
-            Bem-vindo ao Sistema Financeiro Rarotec
+            Bem-vindo ao Raropay
           </p>
         </div>
         <Button asChild>

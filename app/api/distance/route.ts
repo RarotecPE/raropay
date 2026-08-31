@@ -38,7 +38,7 @@ async function getMunicipalityCoordinates(municipality: string, state: string): 
     const searchQuery = encodeURIComponent(`${municipality}, ${state}, Brasil`)
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${searchQuery}&format=json&limit=1&countrycodes=br`,
-      { headers: { 'User-Agent': 'RarotecExpenses/1.0' } }
+      { headers: { 'User-Agent': 'Raropay/1.0' } }
     )
 
     if (!response.ok) return null
@@ -91,7 +91,7 @@ async function getOsrmRoute(
 
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'RarotecExpenses/1.0' },
+      headers: { 'User-Agent': 'Raropay/1.0' },
     })
     clearTimeout(timeoutId)
 

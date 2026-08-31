@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
+import { getAppBranding } from "@/lib/branding.server"
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
+    const branding = await getAppBranding()
     const startDate = searchParams.get("startDate") || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const endDate = searchParams.get("endDate") || new Date().toISOString().split('T')[0]
     const status = searchParams.get("status") || "all"
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Relatório de Despesas - Rarotec</title>
+  <title>Relatório de Despesas - ${branding.name}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -154,7 +156,8 @@ export async function GET(request: NextRequest) {
 </head>
 <body>
   <div class="header">
-    <h1>Sistema Financeiro Rarotec</h1>
+    <img src="${branding.logoUrl}" alt="${branding.name}" style="width: 64px; height: 64px; object-fit: contain; margin-bottom: 12px;" />
+    <h1>${branding.name}</h1>
     <p>Relatório de Despesas</p>
     <p style="margin-top: 10px;">Período: ${formatDate(startDate)} a ${formatDate(endDate)}</p>
   </div>
@@ -209,7 +212,7 @@ export async function GET(request: NextRequest) {
 
   <div class="footer">
     <p>Gerado em ${new Date().toLocaleString('pt-BR')} por ${user.name}</p>
-    <p>Sistema Financeiro Rarotec</p>
+    <p>${branding.name}</p>
   </div>
 </body>
 </html>

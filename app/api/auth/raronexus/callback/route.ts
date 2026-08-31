@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
       return callbackResponse({
         status: "error",
         mode,
-        message: payload.message || "Usuário sem permissão para acessar o RaroPay.",
+        message: payload.message || "Usuário sem permissão para acessar o Raropay.",
         redirectTo: nextPath,
         clearSession: true,
       })
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       return callbackResponse({
         status: "error",
         mode,
-        message: "Usuário sem permissão para acessar o RaroPay.",
+        message: "Usuário sem permissão para acessar o Raropay.",
         redirectTo: nextPath,
         clearSession: true,
       })
