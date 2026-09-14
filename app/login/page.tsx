@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { KeyRound } from "lucide-react"
 import { useBranding } from "@/hooks/use-branding"
@@ -13,52 +13,102 @@ function sanitizeNextPath(next: string | null) {
   return next
 }
 
-function startUrl(nextPath: string) {
-  return `/api/auth/raronexus/start?next=${encodeURIComponent(nextPath)}`
-}
-
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const branding = useBranding()
   const nextPath = useMemo(() => sanitizeNextPath(searchParams.get("next")), [searchParams])
-  const [checking, setChecking] = useState(true)
+
+  const [ssoLoading, setSsoLoading] = useState(false)
+  const [checkingNexusSession, setCheckingNexusSession] = useState(true)
+  const [silentSsoUrl, setSilentSsoUrl] = useState("")
+  const [message, setMessage] = useState("")
   const [error, setError] = useState("")
+  const popupRef = useRef<Window | null>(null)
+  const popupCheckRef = useRef<number | null>(null)
+
+  const stopPopupCheck = () => {
+    if (popupCheckRef.current !== null) {
+      window.clearInterval(popupCheckRef.current)
+      popupCheckRef.current = null
+    }
+  }
 
   useEffect(() => {
-    let active = true
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type !== "raronexus:sso") return
 
-    async function checkSession() {
-      try {
-        const response = await fetch("/api/auth/session", { cache: "no-store" })
-        const data = await response.json()
+      stopPopupCheck()
+      if (event.data.mode !== "silent") {
+        setSsoLoading(false)
+        popupRef.current = null
+      }
+      setCheckingNexusSession(false)
 
-        if (!active) return
+      if (event.data.status === "success") {
+        window.location.href = event.data.redirectTo || nextPath
+        return
+      }
 
-        if (data.authenticated) {
-          router.replace(nextPath)
-          return
-        }
-
-        window.location.replace(startUrl(nextPath))
-      } catch {
-        if (!active) return
-        setChecking(false)
-        setError("Nao foi possivel verificar a sessao. Tente novamente.")
+      if (event.data.mode !== "silent") {
+        setError(event.data.message || "Não foi possível entrar com RaroNexus.")
       }
     }
 
-    checkSession()
+    async function tryExistingSessions() {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" }).catch(() => null)
+        const session = response?.ok ? await response.json().catch(() => null) : null
+
+        if (session?.authenticated) {
+          window.location.href = nextPath
+          return
+        }
+
+        setSilentSsoUrl(
+          `/api/auth/raronexus/start?mode=silent&next=${encodeURIComponent(nextPath)}&attempt=${Date.now()}`
+        )
+        window.setTimeout(() => setCheckingNexusSession(false), 4500)
+      } catch {
+        setCheckingNexusSession(false)
+      }
+    }
+
+    window.addEventListener("message", handleMessage)
+    void tryExistingSessions()
 
     return () => {
-      active = false
+      window.removeEventListener("message", handleMessage)
+      stopPopupCheck()
     }
-  }, [nextPath, router])
+  }, [nextPath])
 
-  function handleLogin() {
+  const startRaroNexusLogin = () => {
     setError("")
-    setChecking(true)
-    window.location.assign(startUrl(nextPath))
+    setMessage("")
+    setSsoLoading(true)
+
+    const popup = window.open(
+      `/api/auth/raronexus/start?next=${encodeURIComponent(nextPath)}`,
+      "raronexus-login",
+      "width=520,height=720,menubar=no,toolbar=no,location=no,status=no"
+    )
+
+    if (!popup) {
+      setSsoLoading(false)
+      setError("Permita popups para entrar com RaroNexus.")
+      return
+    }
+
+    popupRef.current = popup
+    stopPopupCheck()
+    popupCheckRef.current = window.setInterval(() => {
+      if (!popupRef.current?.closed) return
+      stopPopupCheck()
+      popupRef.current = null
+      setSsoLoading(false)
+    }, 500)
   }
 
   return (
@@ -73,9 +123,17 @@ function LoginContent() {
             />
           </div>
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-normal">{branding.name}</h1>
-            <p className="text-sm text-slate-300">
-              Verificando sua sessao RaroNexus.
+            <h1 className="text-3xl font-bold tracking-tight">
+              {branding.name === "Raropay" ? (
+                <>
+                  Raro<span className="text-blue-400">pay</span>
+                </>
+              ) : (
+                branding.name
+              )}
+            </h1>
+            <p className="text-sm text-slate-400">
+              Entre com sua conta RaroNexus para acessar a plataforma.
             </p>
           </div>
         </div>
@@ -83,17 +141,31 @@ function LoginContent() {
         <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
           <button
             type="button"
-            onClick={handleLogin}
-            disabled={checking}
+            onClick={startRaroNexusLogin}
+            disabled={ssoLoading || checkingNexusSession}
             className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
           >
             <KeyRound className="h-5 w-5" />
-            {checking ? "Conectando ao RaroNexus..." : "Entrar com RaroNexus"}
+            {ssoLoading
+              ? "Aguardando RaroNexus..."
+              : checkingNexusSession
+                ? "Verificando RaroNexus..."
+                : "Entrar com RaroNexus"}
           </button>
 
-          {error && (
-            <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-sm text-red-100">
-              {error}
+          {silentSsoUrl ? (
+            <iframe title="Verificação RaroNexus" src={silentSsoUrl} className="hidden" />
+          ) : null}
+
+          {(message || error) && (
+            <p
+              className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
+                error
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                  : "border-blue-500/30 bg-blue-500/10 text-blue-300"
+              }`}
+            >
+              {error || message}
             </p>
           )}
         </div>
@@ -104,11 +176,13 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
-        <p className="text-sm text-slate-300">Carregando...</p>
-      </main>
-    }>
+    <Suspense
+      fallback={
+        <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
+          <p className="text-sm text-slate-300">Carregando...</p>
+        </main>
+      }
+    >
       <LoginContent />
     </Suspense>
   )

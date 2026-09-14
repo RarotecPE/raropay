@@ -307,18 +307,6 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">
-                  {editingUser ? "Nova Senha (deixe em branco para manter)" : "Senha *"}
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value=""
-                  disabled
-                />
-              </div>
               
               {/* Vale-Refeição */}
               <div className="space-y-3 pt-3 border-t">

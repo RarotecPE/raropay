@@ -21,7 +21,7 @@ function defaultRedirectForRole(user: SessionUser) {
 
 function loginUrl(pathname: string) {
   const next = pathname && pathname !== "/login" ? pathname : "/dashboard"
-  return `/api/auth/raronexus/start?next=${encodeURIComponent(next)}`
+  return `/login?next=${encodeURIComponent(next)}`
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

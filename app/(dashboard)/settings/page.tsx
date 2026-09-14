@@ -96,7 +96,6 @@ export default function SettingsPage() {
   const [newUserData, setNewUserData] = useState({
     name: "",
     email: "",
-    password: "",
     role: "employee",
   })
   const [editedRole, setEditedRole] = useState("")
@@ -199,7 +198,7 @@ export default function SettingsPage() {
   }
 
   async function handleCreateUser() {
-    if (!newUserData.name || !newUserData.email || !newUserData.password) {
+    if (!newUserData.name || !newUserData.email) {
       toast.error("Preencha todos os campos")
       return
     }
@@ -215,7 +214,7 @@ export default function SettingsPage() {
       if (res.ok) {
         toast.success("Usuário criado com sucesso")
         setNewUserOpen(false)
-        setNewUserData({ name: "", email: "", password: "", role: "employee" })
+        setNewUserData({ name: "", email: "", role: "employee" })
         fetchData()
       } else {
         try {
@@ -470,15 +469,6 @@ body: JSON.stringify({
                         value={newUserData.email}
                         onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
                         placeholder="email@rarotec.com.br"
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel>Senha Inicial</FieldLabel>
-                      <Input
-                        type="password"
-                        value={newUserData.password}
-                        onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
-                        placeholder="Mínimo 6 caracteres"
                       />
                     </Field>
                     <Field>

@@ -13,33 +13,22 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuBadge,
   useSidebar,
 } from '@/components/ui/sidebar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/components/auth-provider'
 import { useBranding } from '@/hooks/use-branding'
 import { getInitials } from '@/lib/format'
 import { roleLabels } from '@/lib/types'
 import {
-  ChevronUp,
   FileText,
   Home,
-  LogOut,
   PlusCircle,
   History,
   BarChart3,
   UsersRound,
   Settings,
   Users,
-  User,
   Car,
   Send,
   AlertCircle,
@@ -55,7 +44,7 @@ import {
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const branding = useBranding()
   const { setOpenMobile } = useSidebar()
 
@@ -349,49 +338,23 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-2">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="w-full h-auto py-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="text-xs bg-sidebar-primary text-sidebar-primary-foreground font-medium">
-                      {user ? getInitials(user.name) : '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col items-start text-left flex-1 min-w-0">
-                    <span className="truncate text-sm font-medium">
-                      {user?.name || 'Carregando...'}
-                    </span>
-                    <span className="truncate text-xs text-sidebar-foreground/60">
-                      {user ? roleLabels[user.role] : ''}
-                    </span>
-                  </div>
-                  <ChevronUp className="w-4 h-4 opacity-50" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-56">
-                <div className="px-2 py-2">
-                  <p className="text-sm font-medium">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/profile">
-                    <User className="w-4 h-4 mr-2" />
-                    Meu Perfil
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive cursor-pointer">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sair do sistema
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        <div className="flex items-center gap-3 px-1">
+          <Avatar className="w-8 h-8">
+            {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.name} /> : null}
+            <AvatarFallback className="text-xs bg-sidebar-primary text-sidebar-primary-foreground font-medium">
+              {user ? getInitials(user.name) : '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col min-w-0">
+            <span className="truncate text-sm font-medium text-sidebar-foreground">
+              {user?.name || 'Carregando...'}
+            </span>
+            <span className="truncate text-xs text-sidebar-foreground/60">
+              {user ? roleLabels[user.role] : ''}
+            </span>
+          </div>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )

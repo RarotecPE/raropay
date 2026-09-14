@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import { getAppBranding } from '@/lib/branding.server'
+import { EnvironmentBanner } from '@/components/layout/EnvironmentBanner'
 import './globals.css'
 
 // Fonte Inter via Google Fonts é carregada via CSS no globals.css como fallback
@@ -50,6 +51,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
+        <EnvironmentBanner />
         {children}
         <Toaster position="top-center" richColors />
         <Analytics />

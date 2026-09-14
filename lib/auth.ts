@@ -205,6 +205,16 @@ async function introspectToken(token: string): Promise<RaroNexusSession | null> 
   }
 }
 
+interface LocalUserRow {
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  role: UserRole
+  department: string | null
+  active: boolean
+}
+
 export async function ensureLocalUser(session: RaroNexusSession): Promise<SessionUser | null> {
   const role = mapRaroNexusRole(session.role.chave)
 
@@ -215,7 +225,7 @@ export async function ensureLocalUser(session: RaroNexusSession): Promise<Sessio
   const email = session.user.email.trim().toLowerCase()
   const name = session.user.nome.trim() || email
 
-  const [existing] = await sql`
+  const [existing] = await sql<LocalUserRow[]>`
     SELECT id, name, email, phone, role, department, active
     FROM users
     WHERE LOWER(email) = ${email}
@@ -223,7 +233,7 @@ export async function ensureLocalUser(session: RaroNexusSession): Promise<Sessio
   `
 
   if (existing) {
-    const [updated] = await sql`
+    const [updated] = await sql<LocalUserRow[]>`
       UPDATE users
       SET name = ${name},
           email = ${email},
@@ -234,27 +244,21 @@ export async function ensureLocalUser(session: RaroNexusSession): Promise<Sessio
       RETURNING id, name, email, phone, role, department, active
     `
 
+    if (!updated) return null
     return toSessionUser(updated, session)
   }
 
-  const [created] = await sql`
+  const [created] = await sql<LocalUserRow[]>`
     INSERT INTO users (name, email, password_hash, role, department, active)
     VALUES (${name}, ${email}, ${SENTINEL_PASSWORD_HASH}, ${role}, null, true)
     RETURNING id, name, email, phone, role, department, active
   `
 
+  if (!created) return null
   return toSessionUser(created, session)
 }
 
-function toSessionUser(localUser: {
-  id: number
-  name: string
-  email: string
-  phone: string | null
-  role: UserRole
-  department: string | null
-  active: boolean
-}, nexusSession: RaroNexusSession): SessionUser | null {
+function toSessionUser(localUser: LocalUserRow, nexusSession: RaroNexusSession): SessionUser | null {
   if (!localUser?.active) {
     return null
   }
@@ -271,10 +275,29 @@ function toSessionUser(localUser: {
   }
 }
 
+export function getGlobalSessionToken(request: NextRequest | Request): string | null {
+  if ("cookies" in request) {
+    const nextReq = request as NextRequest
+    return (
+      nextReq.cookies.get(SESSION_COOKIE)?.value ??
+      nextReq.cookies.get("raronexus_global_session")?.value ??
+      null
+    )
+  }
+  return null
+}
+
+export async function getGlobalSessionTokenFromCookies(): Promise<string | null> {
+  const cookieStore = await cookies()
+  return (
+    cookieStore.get(SESSION_COOKIE)?.value ??
+    cookieStore.get("raronexus_global_session")?.value ??
+    null
+  )
+}
+
 export async function getSessionFromRequest(request: NextRequest | Request): Promise<SessionUser | null> {
-  const token = "cookies" in request
-    ? request.cookies.get(SESSION_COOKIE)?.value
-    : undefined
+  const token = getGlobalSessionToken(request)
 
   if (!token) {
     return null

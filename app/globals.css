@@ -3,6 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  scrollbar-gutter: stable;
+}
+
 :root {
   /* Tema Azul Moderno - Raropay */
   --background: oklch(0.98 0.002 240);

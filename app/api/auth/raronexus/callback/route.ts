@@ -160,10 +160,11 @@ function callbackResponse({
   <body>
     <script>
       const payload = ${payload};
-      const target = window.opener || (window.parent !== window ? window.parent : null);
-      if (target) {
-        target.postMessage(payload, window.location.origin);
+      if (window.opener) {
+        window.opener.postMessage(payload, window.location.origin);
         window.close();
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(payload, window.location.origin);
       } else if (payload.status === "success") {
         window.location.replace(payload.redirectTo || "/dashboard");
       } else {
