@@ -9,11 +9,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
-    // Apenas gestores, diretoria, admin e financeiro podem ver relatórios
+    // Gestores, diretoria, admin e financeiro veem relatórios de todos.
+    // Demais papéis (ex.: funcionário) têm acesso apenas às próprias despesas.
     const allowedRoles = ["manager", "director", "admin", "financial"]
-    if (!allowedRoles.includes(user.role)) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
-    }
+    const isManagement = allowedRoles.includes(user.role)
 
     const searchParams = request.nextUrl.searchParams
     const startDate = searchParams.get("startDate") || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -21,7 +20,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "all"
     const categoriesParam = searchParams.get("categories")
     const typesParam = searchParams.get("types")
-    const employeeId = searchParams.get("employeeId")
+    // Funcionário comum é sempre restrito ao próprio id, ignorando qualquer employeeId recebido.
+    const employeeId = isManagement ? searchParams.get("employeeId") : String(user.id)
 
     const categories = categoriesParam ? categoriesParam.split(",") : null
     const types = typesParam ? typesParam.split(",") : null

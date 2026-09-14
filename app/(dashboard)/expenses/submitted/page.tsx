@@ -562,7 +562,7 @@ export default function ProcessedExpensesPage() {
             {/* Resumo das despesas por tipo */}
             <div className="p-4 bg-muted/50 rounded-lg space-y-3">
               <h4 className="font-medium">Resumo por Tipo de Despesa</h4>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid gap-3 sm:grid-cols-3">
                 {expenseAnalysis.hasCartao && (
                   <div className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-blue-600" />

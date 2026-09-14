@@ -36,6 +36,7 @@ export async function GET(request: Request) {
         u.id,
         u.name,
         u.department,
+        u.transport_voucher_limit,
         COALESCE(SUM(
           CASE WHEN e.category = 'transport_voucher'
                AND e.status != 'rejected'
@@ -53,17 +54,29 @@ export async function GET(request: Request) {
       FROM users u
       LEFT JOIN expenses e ON e.user_id = u.id
       WHERE u.transport_voucher_enabled = true AND u.active = true
-      GROUP BY u.id, u.name, u.department
+      GROUP BY u.id, u.name, u.department, u.transport_voucher_limit
       ORDER BY used_amount DESC, u.name
     `
 
-    // Calcular totais (não há limite no vale-transporte)
-    const totalUsed = usersWithVoucher.reduce((acc, u) => acc + Number(u.used_amount), 0)
+    // Totais. O limite do VT é opcional: separamos a população "orçada" (com limite)
+    // do gasto total para que Limite/Utilizado/Disponível/Taxa sejam coerentes entre si
+    // e nunca resultem em saldo negativo por conta de funcionários ilimitados.
+    const totalLimit = usersWithVoucher.reduce(
+      (acc, u) => acc + (u.transport_voucher_limit != null ? Number(u.transport_voucher_limit) : 0),
+      0,
+    )
+    // Gasto apenas dos funcionários COM limite (usado no orçamento: barra e disponível)
+    const totalUsedLimited = usersWithVoucher.reduce(
+      (acc, u) => acc + (u.transport_voucher_limit != null ? Number(u.used_amount) : 0),
+      0,
+    )
+    // Gasto de TODOS os funcionários habilitados (acompanhamento de gastos)
+    const totalUsedAll = usersWithVoucher.reduce((acc, u) => acc + Number(u.used_amount), 0)
     const totalTransactions = usersWithVoucher.reduce((acc, u) => acc + Number(u.transactions_count), 0)
     const usersCount = usersWithVoucher.length
-    // Maior gasto individual do mês, usado como referência para comparação relativa
-    const maxUsed = usersWithVoucher.reduce((acc, u) => Math.max(acc, Number(u.used_amount)), 0)
-    const avgPerUser = usersCount > 0 ? totalUsed / usersCount : 0
+    const usersWithLimitCount = usersWithVoucher.filter((u) => u.transport_voucher_limit != null).length
+    const hasLimits = totalLimit > 0
+    const avgPerUser = usersCount > 0 ? Math.round((totalUsedAll / usersCount) * 100) / 100 : 0
 
     // Buscar histórico dos últimos 6 meses
     const history = await sql`
@@ -86,27 +99,35 @@ export async function GET(request: Request) {
         month: currentMonth,
         year: currentYear,
         monthName: new Date(currentYear, currentMonth - 1).toLocaleString('pt-BR', { month: 'long' }),
+        hasLimits,
         usersCount,
-        totalUsed,
+        usersWithLimitCount,
+        totalLimit,
+        // Em modo orçamento (com limites), "Utilizado" reflete apenas quem tem limite,
+        // para casar com o limite total e a barra. Sem limites, reflete o gasto total.
+        totalUsed: hasLimits ? totalUsedLimited : totalUsedAll,
+        totalUsedAll,
+        totalAvailable: totalLimit - totalUsedLimited,
+        avgPerUser,
         totalTransactions,
-        avgPerUser: Math.round(avgPerUser * 100) / 100,
-        maxUsed,
+        utilizationRate: hasLimits ? Math.round((totalUsedLimited / totalLimit) * 100) : 0,
       },
-      users: usersWithVoucher.map(u => {
+      users: usersWithVoucher.map((u) => {
         const used = Number(u.used_amount)
+        const hasLimit = u.transport_voucher_limit != null
+        const limit = hasLimit ? Number(u.transport_voucher_limit) : null
         return {
           id: u.id,
           name: u.name,
           department: u.department,
+          limit,
           used,
+          available: hasLimit ? (limit as number) - used : null,
           transactionsCount: Number(u.transactions_count),
-          // Participação relativa ao maior gastador do mês (para comparação visual)
-          sharePercent: maxUsed > 0 ? Math.round((used / maxUsed) * 100) : 0,
-          // Participação no total do mês
-          totalSharePercent: totalUsed > 0 ? Math.round((used / totalUsed) * 100) : 0,
+          utilizationRate: hasLimit && (limit as number) > 0 ? Math.round((used / (limit as number)) * 100) : null,
         }
       }),
-      history: history.map(h => {
+      history: history.map((h) => {
         const [year, month] = (h.month as string).split('-').map(Number)
         const totalAmount = Number(h.total_amount) || 0
         const usersCountH = Number(h.users_count) || 0

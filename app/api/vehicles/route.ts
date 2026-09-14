@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
-import { getSession, canManageUsers } from '@/lib/auth'
+import { getSession, canViewAllExpenses } from '@/lib/auth'
 
 // Listar veículos
 export async function GET(request: NextRequest) {

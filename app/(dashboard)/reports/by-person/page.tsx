@@ -101,7 +101,7 @@ export default function ByPersonReportPage() {
     doc.rect(0, 0, pageWidth, 28, "F")
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(16)
-    doc.text("RAROPAY", pageWidth / 2, 12, { align: "center" })
+    doc.text("SISTEMA FINANCEIRO RAROTEC", pageWidth / 2, 12, { align: "center" })
     doc.setFontSize(11)
     doc.text("Relatório de Gasto Real por Pessoa", pageWidth / 2, 20, { align: "center" })
 

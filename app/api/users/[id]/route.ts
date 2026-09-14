@@ -38,6 +38,7 @@ export async function PATCH(
       meal_voucher_enabled,
       meal_voucher_limit,
       transport_voucher_enabled,
+      transport_voucher_limit,
     } = body
 
     const isActive = active !== undefined ? active : is_active
@@ -50,6 +51,10 @@ export async function PATCH(
     const nextMealVoucherEnabled = meal_voucher_enabled ?? null
     const nextMealVoucherLimit = meal_voucher_limit ?? null
     const nextTransportVoucherEnabled = transport_voucher_enabled ?? null
+    const transportLimitProvided = transport_voucher_enabled !== undefined && transport_voucher_enabled !== null
+    const transportLimit = transport_voucher_enabled
+      ? (transport_voucher_limit === null || transport_voucher_limit === undefined || transport_voucher_limit === '' ? null : Number(transport_voucher_limit))
+      : null
 
     const [existingUser] = await sql`
       SELECT id FROM users WHERE id = ${userId}
@@ -79,10 +84,11 @@ export async function PATCH(
         meal_voucher_enabled = COALESCE(${nextMealVoucherEnabled}, meal_voucher_enabled),
         meal_voucher_limit = COALESCE(${nextMealVoucherLimit}, meal_voucher_limit),
         transport_voucher_enabled = COALESCE(${nextTransportVoucherEnabled}, transport_voucher_enabled),
+        transport_voucher_limit = CASE WHEN ${transportLimitProvided} THEN ${transportLimit} ELSE transport_voucher_limit END,
         updated_at = NOW()
       WHERE id = ${userId}
       RETURNING id, name, email, phone, role, department, active,
-                meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, created_at
+                meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, transport_voucher_limit, created_at
     `
 
     if (updatedUser) {

@@ -208,6 +208,7 @@ export async function PUT(
     // Campos específicos por categoria
     const transport_type = body.transport_type || null
     const transport_mode = body.transport_mode || null
+    const transport_voucher_type = body.transport_voucher_type || null
     const departure_city = body.departure_city || null
     const departure_state = body.departure_state || null
     const arrival_city = body.arrival_city || null
@@ -269,6 +270,7 @@ export async function PUT(
         limit_exceeded_reason = ${limitExceededReason},
         transport_type = ${transport_type},
         transport_mode = ${transport_mode},
+        transport_voucher_type = ${transport_voucher_type},
         departure_city = ${departure_city},
         departure_state = ${departure_state},
         arrival_city = ${arrival_city},

@@ -130,6 +130,17 @@ export function AppSidebar() {
       icon: Wallet,
       description: 'Solicitar adiantamento',
     },
+    // Relatórios pessoais: exclusivo do funcionário comum (gestão acessa em "Gestão")
+    ...(user?.role === 'employee'
+      ? [
+          {
+            title: 'Relatórios',
+            url: '/reports',
+            icon: BarChart3,
+            description: 'Meus relatórios de despesas',
+          },
+        ]
+      : []),
   ]
 
   // Menu de gestão (financeiro/diretor/admin)

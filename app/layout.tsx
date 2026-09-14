@@ -1,15 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import { getAppBranding } from '@/lib/branding.server'
 import './globals.css'
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-})
+// Fonte Inter via Google Fonts é carregada via CSS no globals.css como fallback
+// para permitir build offline. Se quiser voltar ao next/font/google, descomente abaixo:
+// import { Inter } from 'next/font/google'
+// const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
+const inter = { variable: '' }
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getAppBranding()
