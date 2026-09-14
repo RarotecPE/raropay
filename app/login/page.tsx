@@ -1,10 +1,5 @@
-"use client"
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { KeyRound } from "lucide-react"
-import { useBranding } from "@/hooks/use-branding"
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -16,42 +11,18 @@ import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
 import { Lock, Mail } from 'lucide-react'
 
-function sanitizeNextPath(next: string | null) {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/api/")) {
-    return "/dashboard"
-  }
-
-  return next
-}
-
-function startUrl(nextPath: string) {
-  return `/api/auth/raronexus/start?next=${encodeURIComponent(nextPath)}`
-}
-
-function LoginContent() {
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const branding = useBranding()
-  const nextPath = useMemo(() => sanitizeNextPath(searchParams.get("next")), [searchParams])
-  const [checking, setChecking] = useState(true)
-  const [error, setError] = useState("")
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    let active = true
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
 
-    async function checkSession() {
-      try {
-        const response = await fetch("/api/auth/session", { cache: "no-store" })
-        const data = await response.json()
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -59,23 +30,13 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       })
 
-        if (!active) return
       const data = await response.json()
 
-        if (data.authenticated) {
-          router.replace(nextPath)
-          return
-        }
       if (!response.ok) {
         setError(data.error || 'Erro ao fazer login')
         return
       }
 
-        window.location.replace(startUrl(nextPath))
-      } catch {
-        if (!active) return
-        setChecking(false)
-        setError("Nao foi possivel verificar a sessao. Tente novamente.")
       toast.success('Login realizado com sucesso!')
       
       // Redirecionar para dashboard específico baseado no role
@@ -92,34 +53,9 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
-
-    checkSession()
-
-    return () => {
-      active = false
-    }
-  }, [nextPath, router])
-
-  function handleLogin() {
-    setError("")
-    setChecking(true)
-    window.location.assign(startUrl(nextPath))
   }
 
   return (
-    <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-4">
-          <img
-            src={branding.logoUrl}
-            alt={branding.name}
-            className="mx-auto h-16 w-16 rounded-2xl bg-white object-contain"
-          />
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold tracking-normal">{branding.name}</h1>
-            <p className="text-sm text-slate-300">
-              Verificando sua sessao RaroNexus.
-            </p>
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 p-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
@@ -137,16 +73,6 @@ export default function LoginPage() {
           <p className="text-muted-foreground text-sm">Gestão de Despesas Corporativas</p>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
-          <button
-            type="button"
-            onClick={handleLogin}
-            disabled={checking}
-            className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <KeyRound className="h-5 w-5" />
-            {checking ? "Conectando ao RaroNexus..." : "Entrar com RaroNexus"}
-          </button>
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl font-semibold">Entrar</CardTitle>
@@ -174,12 +100,6 @@ export default function LoginPage() {
                   </div>
                 </Field>
 
-          {error && (
-            <p className="mt-4 rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-sm text-red-100">
-              {error}
-            </p>
-          )}
-        </div>
                 <Field>
                   <FieldLabel htmlFor="password">Senha</FieldLabel>
                   <div className="relative">
@@ -218,19 +138,6 @@ export default function LoginPage() {
           Sistema exclusivo para funcionários Rarotec
         </p>
       </div>
-    </main>
     </div>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
-        <p className="text-sm text-slate-300">Carregando...</p>
-      </main>
-    }>
-      <LoginContent />
-    </Suspense>
   )
 }

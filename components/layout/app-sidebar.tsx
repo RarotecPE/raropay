@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/components/auth-provider'
-import { useBranding } from '@/hooks/use-branding'
 import { getInitials } from '@/lib/format'
 import { roleLabels } from '@/lib/types'
 import {
@@ -57,7 +56,6 @@ import {
 export function AppSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const branding = useBranding()
   const { setOpenMobile } = useSidebar()
 
   // Verifica se é usuário financeiro (só tem acesso a gestão)
@@ -280,10 +278,6 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <Link href="/dashboard" className="flex items-center gap-3" onClick={handleNavigation}>
           <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden">
-            <img
-              src={branding.logoUrl}
-              alt={branding.name}
-              className="max-h-8 max-w-8 object-contain"
             <Image 
               src="/images/logo-rarotec.png" 
               alt="Rarotec" 
@@ -294,7 +288,6 @@ export function AppSidebar() {
             />
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-sidebar-foreground">{branding.name}</span>
             <span className="font-semibold text-sidebar-foreground">Rarotec</span>
             <span className="text-xs text-sidebar-foreground/60">Gestão de Despesas</span>
           </div>
