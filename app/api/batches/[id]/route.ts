@@ -1,6 +1,8 @@
+import { neon } from "@neondatabase/serverless"
 import { NextRequest, NextResponse } from "next/server"
 import { getSession, canViewAllExpenses } from "@/lib/auth"
-import { sql } from "@/lib/db"
+
+const sql = neon(process.env.DATABASE_URL!)
 
 // GET - Buscar remessa por ID com suas despesas
 export async function GET(

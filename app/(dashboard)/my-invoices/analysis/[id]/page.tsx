@@ -712,7 +712,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Valor (R$)</Label>
                 <Input
@@ -733,7 +733,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Categoria</Label>
                 <Select 
@@ -773,7 +773,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
             {isVehicleExpense && (
               <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-sm font-medium">Hodômetro (Km)</Label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Km Inicial</Label>
                     <Input

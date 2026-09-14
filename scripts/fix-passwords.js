@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
-import postgres from 'postgres'
+import { neon } from '@neondatabase/serverless'
 
-const sql = postgres(process.env.DATABASE_CONNECTION, { prepare: false })
+const sql = neon(process.env.DATABASE_URL)
 
 async function fixPasswords() {
   // Gerar hash correto para senha 123456
@@ -23,6 +23,4 @@ async function fixPasswords() {
   })
 }
 
-fixPasswords()
-  .catch(console.error)
-  .finally(() => process.exit())
+fixPasswords().catch(console.error)

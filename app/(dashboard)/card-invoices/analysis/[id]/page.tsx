@@ -37,7 +37,14 @@ import {
   AlertCircle
 } from "lucide-react"
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
+  if (!res.ok) {
+    // Evita que uma resposta de erro (ex.: { error: "..." }) seja tratada como dado válido
+    throw new Error(`Falha ao carregar ${url} (status ${res.status})`)
+  }
+  return res.json()
+}
 
 function formatDate(dateStr: string) {
   if (!dateStr) return "-"
@@ -172,7 +179,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
   })
 
   // Buscar despesas disponíveis para adicionar
-  const { data: availableExpenses } = useSWR<AvailableExpense[]>(
+  const { data: availableExpenses, error: availableExpensesError, isLoading: isLoadingAvailable } = useSWR<AvailableExpense[]>(
     showAddExpensesDialog ? `/api/invoice-analysis/${id}/link-expenses` : null,
     fetcher
   )
@@ -358,10 +365,12 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
     )
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground mb-4">Erro ao carregar solicitação</p>
+        <p className="text-muted-foreground mb-4">
+          {error ? "Erro ao carregar solicitação" : "Carregando..."}
+        </p>
         <Button onClick={() => router.back()}>Voltar</Button>
       </div>
     )
@@ -701,26 +710,32 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Dialog para Adicionar Despesas */}
       <Dialog open={showAddExpensesDialog} onOpenChange={setShowAddExpensesDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="shrink-0 p-6 pb-4">
             <DialogTitle>Adicionar Despesas para Revisão</DialogTitle>
             <DialogDescription>
               Selecione as despesas que o funcionário deve verificar ou editar. Uma mensagem será enviada automaticamente no chat.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {!availableExpenses ? (
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 space-y-4">
+            {availableExpensesError ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertCircle className="w-6 h-6 mx-auto mb-2 text-amber-600" />
+                <p>Não foi possível carregar as despesas.</p>
+                <p className="text-sm">Tente fechar e abrir novamente.</p>
+              </div>
+            ) : isLoadingAvailable || !availableExpenses ? (
               <div className="flex items-center justify-center py-8">
                 <Spinner className="w-6 h-6" />
               </div>
-            ) : availableExpenses.length === 0 ? (
+            ) : !Array.isArray(availableExpenses) || availableExpenses.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>Não há mais despesas disponíveis para adicionar.</p>
                 <p className="text-sm">Todas as despesas do período já foram vinculadas.</p>
               </div>
             ) : (
-              <div className="border rounded-lg max-h-64 overflow-y-auto">
+              <div className="border rounded-lg">
                 {availableExpenses.map(expense => {
                   const isSelected = selectedExpensesToAdd.some(e => e.expense_id === expense.id)
                   return (
@@ -766,14 +781,15 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            {selectedExpensesToAdd.length > 0 && (
-              <p className="text-sm text-blue-600">
-                {selectedExpensesToAdd.length} despesa(s) selecionada(s)
-              </p>
-            )}
           </div>
 
-          <DialogFooter>
+          {selectedExpensesToAdd.length > 0 && (
+            <p className="shrink-0 px-6 pt-3 text-sm text-blue-600">
+              {selectedExpensesToAdd.length} despesa(s) selecionada(s)
+            </p>
+          )}
+
+          <DialogFooter className="shrink-0 border-t p-6 pt-4">
             <Button variant="outline" onClick={() => {
               setShowAddExpensesDialog(false)
               setSelectedExpensesToAdd([])

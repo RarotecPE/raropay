@@ -82,7 +82,7 @@ export default function AdminDashboardPage() {
             Olá, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-muted-foreground">
-            Bem-vindo ao Raropay
+            Bem-vindo ao Sistema Financeiro Rarotec
           </p>
         </div>
         <Button asChild>

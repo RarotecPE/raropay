@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Tema Azul Moderno - Raropay */
+  /* Tema Azul Moderno - Rarotec */
   --background: oklch(0.98 0.002 240);
   --foreground: oklch(0.15 0.02 240);
   --card: oklch(1 0 0);
@@ -142,6 +142,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    @apply max-w-full overflow-x-hidden;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";

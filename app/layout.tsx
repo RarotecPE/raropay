@@ -19,17 +19,15 @@ export async function generateMetadata(): Promise<Metadata> {
     description: `Gerenciamento financeiro do ${branding.name}`,
     generator: 'v0.app',
     icons: {
-      icon: [
-        { url: "/favicon.ico", sizes: "any" },
-        { url: branding.faviconUrl || "/favicon.png", type: "image/png" },
-      ],
-      shortcut: branding.faviconUrl || "/favicon.png",
-      apple: [
-        { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
-        { url: branding.logoUrl },
-      ],
+      icon: branding.faviconUrl,
+      shortcut: branding.faviconUrl,
+      apple: branding.logoUrl,
     },
   }
+export const metadata: Metadata = {
+  title: 'Sistema Financeiro Rarotec',
+  description: 'Gerenciamento de despesas corporativas da Rarotec',
+  generator: 'v0.app',
 }
 
 export const viewport: Viewport = {

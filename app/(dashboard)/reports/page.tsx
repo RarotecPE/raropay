@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { useAuth } from "@/components/auth-provider"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,7 +23,6 @@ import {
   PieChart
 } from "lucide-react"
 import { formatCurrency } from "@/lib/format"
-import { DEFAULT_BRANDING, type AppBranding } from "@/lib/branding"
 import { 
   BarChart, 
   Bar, 
@@ -48,16 +47,6 @@ interface ExpenseItem {
   state: string
   municipality: string
   user_name: string
-}
-
-async function fetchBranding(): Promise<AppBranding> {
-  try {
-    const response = await fetch("/api/branding", { cache: "no-store" })
-    const data = await response.json()
-    return data?.branding ?? DEFAULT_BRANDING
-  } catch {
-    return DEFAULT_BRANDING
-  }
 }
 
 interface ReportData {
@@ -127,8 +116,16 @@ export default function ReportsPage() {
   const [selectedEmployee, setSelectedEmployee] = useState("all")
   const [employees, setEmployees] = useState<{id: number, name: string}[]>([])
 
-  // Buscar lista de funcionários
+  // Papéis de gestão veem todos os funcionários; funcionário comum vê apenas as próprias despesas
+  const isManagement =
+    user?.role === "manager" ||
+    user?.role === "director" ||
+    user?.role === "admin" ||
+    user?.role === "financial"
+
+  // Buscar lista de funcionários (apenas para gestão; funcionário comum não tem esse filtro)
   useEffect(() => {
+    if (!isManagement) return
     async function fetchEmployees() {
       try {
         const res = await fetch('/api/users?active=true')
@@ -142,7 +139,7 @@ export default function ReportsPage() {
       }
     }
     fetchEmployees()
-  }, [])
+  }, [isManagement])
 
   const categories = [
     { value: "accommodation", label: "Hospedagem" },
@@ -274,13 +271,11 @@ export default function ReportsPage() {
       doc.setFillColor(...lightBlue)
       doc.rect(0, 50, pageWidth, 3, 'F')
       
-      const branding = await fetchBranding()
-
       // Adicionar logo na área branca (contraste garantido)
       try {
         const logoImg = new Image()
         logoImg.crossOrigin = 'anonymous'
-        logoImg.src = branding.logoUrl
+        logoImg.src = '/images/logo-rarotec.png'
         await new Promise((resolve, reject) => {
           logoImg.onload = resolve
           logoImg.onerror = reject
@@ -301,7 +296,7 @@ export default function ReportsPage() {
       doc.setFontSize(18)
       doc.setTextColor(255, 255, 255)
       doc.setFont("helvetica", "bold")
-      doc.text(branding.name.toUpperCase(), 130, 18, { align: "center" })
+      doc.text("SISTEMA FINANCEIRO RAROTEC", 130, 18, { align: "center" })
       
       // Subtítulo
       doc.setFontSize(12)
@@ -477,7 +472,7 @@ export default function ReportsPage() {
         leftY2 = createSummaryTable("Resumo por Status", ['Status', 'Qtd', 'Total'], statusData, currentY, leftCol, colWidths)
       }
       
-      if (reportData.byEmployee && reportData.byEmployee.length > 0) {
+      if (isManagement && reportData.byEmployee && reportData.byEmployee.length > 0) {
         const empData = reportData.byEmployee.map(emp => [
           emp.employee, String(emp.count), formatCurrency(emp.total)
         ])
@@ -685,7 +680,7 @@ export default function ReportsPage() {
         doc.setTextColor(156, 163, 175)
         doc.setFont("helvetica", "normal")
         doc.text(
-          `${branding.name} - Documento gerado em ${new Date().toLocaleString('pt-BR')}`,
+          `Sistema Financeiro Rarotec - Documento gerado em ${new Date().toLocaleString('pt-BR')}`,
           14,
           pageHeight - 8
         )
@@ -724,30 +719,16 @@ export default function ReportsPage() {
     )
   }
 
-  const canViewReports = user?.role === "manager" || user?.role === "director" || user?.role === "admin" || user?.role === "financial"
-
-  if (!canViewReports) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center p-4">
-        <Card className="max-w-md text-center">
-          <CardHeader>
-            <CardTitle>Acesso Restrito</CardTitle>
-            <CardDescription>
-              Você não tem permissão para acessar os relatórios.
-              Apenas administradores, gestores, diretoria e financeiro podem visualizar esta área.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {isManagement ? "Relatórios" : "Meus Relatórios"}
+        </h1>
         <p className="text-muted-foreground">
-          Gere relatórios detalhados das despesas com filtros personalizados
+          {isManagement
+            ? "Gere relatórios detalhados das despesas com filtros personalizados"
+            : "Gere relatórios detalhados das suas despesas com filtros personalizados"}
         </p>
       </div>
 
@@ -835,7 +816,7 @@ export default function ReportsPage() {
           <Separator />
 
           {/* Status e Funcionário */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className={isManagement ? "grid gap-4 md:grid-cols-2" : "grid gap-4"}>
             <Field>
               <FieldLabel>Status</FieldLabel>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
@@ -851,22 +832,25 @@ export default function ReportsPage() {
               </Select>
             </Field>
 
-            <Field>
-              <FieldLabel>Funcionário</FieldLabel>
-              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os funcionários</SelectItem>
-                  {employees.map((emp) => (
-                    <SelectItem key={emp.id} value={String(emp.id)}>
-                      {emp.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+            {/* Filtro de funcionário: apenas gestão. Funcionário comum vê somente as próprias despesas. */}
+            {isManagement && (
+              <Field>
+                <FieldLabel>Funcionário</FieldLabel>
+                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os funcionários</SelectItem>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={String(emp.id)}>
+                        {emp.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
           </div>
 
           {/* Botões de ação */}

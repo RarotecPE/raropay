@@ -28,11 +28,12 @@ export function AppHeader() {
   const title = pathTitles[pathname] || 'Página'
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6">
-      <SidebarTrigger className="-ml-2" />
-      <Separator orientation="vertical" className="h-6" />
-      <Breadcrumb>
-        <BreadcrumbList>
+    <header className="flex h-14 min-w-0 items-center gap-2 border-b bg-background px-3 sm:gap-4 sm:px-4 lg:px-6">
+      <SidebarTrigger className="-ml-1 shrink-0 sm:-ml-2" />
+      <Separator orientation="vertical" className="h-6 shrink-0" />
+      <Breadcrumb className="min-w-0 overflow-hidden">
+
+        <BreadcrumbList className="flex-nowrap whitespace-nowrap">
           <BreadcrumbItem>
             <BreadcrumbLink href="/dashboard">Sistema</BreadcrumbLink>
           </BreadcrumbItem>

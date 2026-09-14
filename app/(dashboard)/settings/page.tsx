@@ -441,12 +441,12 @@ body: JSON.stringify({
                 </CardDescription>
               </div>
               <Dialog open={newUserOpen} onOpenChange={setNewUserOpen}>
-                {false && <DialogTrigger asChild>
+                <DialogTrigger asChild>
                   <Button size="sm">
                     <UserPlus className="mr-2 h-4 w-4" />
                     Novo Usuário
                   </Button>
-                </DialogTrigger>}
+                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Criar Novo Usuário</DialogTitle>
@@ -732,11 +732,11 @@ body: JSON.stringify({
                         </div>
                       </div>
                       
-                      {/* Arquivos (Cloudflare R2) */}
+                      {/* Arquivos (Vercel Blob) */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <Cloud className="h-4 w-4 text-purple-600" />
-                          <span className="font-medium">Arquivos (Cloudflare R2)</span>
+                          <span className="font-medium">Arquivos (Vercel Blob)</span>
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between items-center text-sm">

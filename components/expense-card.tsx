@@ -120,7 +120,7 @@ export interface ExpenseData {
   entry_time?: string
   exit_time?: string
   // Itens escritório / outras
-  items?: unknown
+  items?: any[]
   purchase_reason?: string
   requester?: string
   requester_name?: string
@@ -159,25 +159,6 @@ interface ExpenseCardProps {
   onView?: () => void
   processing?: boolean
   deleting?: boolean
-}
-
-function normalizeExpenseItems(items: unknown): any[] {
-  if (Array.isArray(items)) return items
-
-  if (typeof items === 'string') {
-    try {
-      const parsed = JSON.parse(items)
-      return Array.isArray(parsed) ? parsed : []
-    } catch {
-      return []
-    }
-  }
-
-  if (items && typeof items === 'object') {
-    return Object.values(items)
-  }
-
-  return []
 }
 
 // Ícone por categoria
@@ -284,13 +265,11 @@ export function ExpenseCard({
     switch (expense.category) {
       case 'accommodation':
         // Calcular valores separados
-        const extras = normalizeExpenseItems(expense.extra_expenses)
+        const extras = expense.extra_expenses || []
         const extrasNaoRefeicao = extras.filter(e => !e.isMeal)
         const extrasRefeicao = extras.filter(e => e.isMeal)
         const totalExtrasNaoRefeicao = extrasNaoRefeicao.reduce((sum, e) => sum + e.value, 0)
         const totalExtrasRefeicao = extrasRefeicao.reduce((sum, e) => sum + e.value, 0)
-        const accommodationLinkedEmployees = normalizeExpenseItems(expense.linked_employees)
-        const accommodationLinkedExternalParties = normalizeExpenseItems(expense.linked_external_parties)
         
         // Calcular quartos
         const quartosTotal = 
@@ -302,7 +281,7 @@ export function ExpenseCard({
         const valorParaMedia = quartosTotal + totalExtrasNaoRefeicao
         
         // Pessoas vinculadas
-        const totalPessoas = 1 + accommodationLinkedEmployees.length + accommodationLinkedExternalParties.length
+        const totalPessoas = 1 + (expense.linked_employees?.length || 0) + (expense.linked_external_parties?.length || 0)
         
         // Média por pessoa/diária
         const mediaPorPessoaDiaria = expense.nights_count && totalPessoas 
@@ -452,9 +431,7 @@ export function ExpenseCard({
 
       case 'food':
         // Calcular pessoas vinculadas
-        const linkedEmployees = normalizeExpenseItems(expense.linked_employees)
-        const linkedExternalParties = normalizeExpenseItems(expense.linked_external_parties)
-        const totalPessoasRefeicao = 1 + linkedEmployees.length + linkedExternalParties.length
+        const totalPessoasRefeicao = 1 + (expense.linked_employees?.length || 0) + (expense.linked_external_parties?.length || 0)
         const mediaPorPessoaRefeicao = totalPessoasRefeicao > 0 ? expense.amount / totalPessoasRefeicao : expense.amount
         
         return (
@@ -496,11 +473,11 @@ export function ExpenseCard({
                   </div>
                 </div>
               )}
-              {linkedEmployees.length > 0 && (
+              {expense.linked_employees && expense.linked_employees.length > 0 && (
                 <div className="col-span-2 md:col-span-4">
                   <p className="text-muted-foreground text-xs mb-1">Funcionários Vinculados</p>
                   <div className="flex flex-wrap gap-1">
-                    {linkedEmployees.map((emp: any, i: number) => (
+                    {expense.linked_employees.map((emp: any, i: number) => (
                       <Badge key={i} variant="secondary" className="text-xs">
                         {emp.name || `ID: ${emp.user_id}`}
                       </Badge>
@@ -738,9 +715,7 @@ export function ExpenseCard({
         )
 
       case 'office_supplies':
-      case 'other': {
-        const items = normalizeExpenseItems(expense.items)
-
+      case 'other':
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             {expense.establishment_name && (
@@ -779,11 +754,11 @@ export function ExpenseCard({
                 </div>
               </div>
             )}
-            {items.length > 0 && (
+            {expense.items && expense.items.length > 0 && (
               <div className="col-span-2 md:col-span-4">
                 <p className="text-muted-foreground text-xs mb-1">Itens</p>
                 <div className="space-y-1">
-                  {items.map((item: any, i: number) => {
+                  {expense.items.map((item: any, i: number) => {
                     // Parsear totalPrice de string formatada "R$ 10,00" para número
                     let itemTotal = 0
                     if (item.totalPrice) {
@@ -802,7 +777,7 @@ export function ExpenseCard({
                     
                     // Se ainda não tem valor, usar valor global dividido pelos itens
                     if (!itemTotal || isNaN(itemTotal)) {
-                      itemTotal = expense.amount / items.length
+                      itemTotal = expense.amount / expense.items.length
                     }
                     
                     return (
@@ -817,7 +792,6 @@ export function ExpenseCard({
             )}
           </div>
         )
-      }
 
       default:
         return null

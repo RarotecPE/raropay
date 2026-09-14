@@ -76,6 +76,7 @@ import {
   Navigation,
   Camera,
   Bus,
+  AlertCircle,
 } from 'lucide-react'
 
 const expenseTypeIcons: Record<ExpenseType, typeof CreditCard> = {
@@ -167,6 +168,7 @@ export interface ExpenseFormInitialData {
   vehicle_plate?: string
   fuel_date?: string
   transport_type?: string
+  transport_voucher_type?: string
   departure_city?: string
   departure_state?: string
   arrival_city?: string
@@ -369,6 +371,7 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
   // =====================
   const [transportType, setTransportType] = useState('') // tipo de trajeto (metropolitano, intermunicipal)
   const [transportMode, setTransportMode] = useState('') // modo de transporte (uber, 99pop, avião, etc)
+  const [transportVoucherType, setTransportVoucherType] = useState('') // categoria do vale-transporte (fuel, app, public)
   const [transportDate, setTransportDate] = useState('')
   const [transportDepartureState, setTransportDepartureState] = useState('PE')
   const [transportDepartureCity, setTransportDepartureCity] = useState('')
@@ -431,6 +434,8 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
   // =====================
   const [mealVoucherEnabled, setMealVoucherEnabled] = useState(false)
   const [transportVoucherEnabled, setTransportVoucherEnabled] = useState(false)
+  const [transportVoucherLimit, setTransportVoucherLimit] = useState<number | null>(null)
+  const [transportVoucherUsed, setTransportVoucherUsed] = useState(0)
   const [mealVoucherLimit, setMealVoucherLimit] = useState(250)
   const [mealVoucherUsed, setMealVoucherUsed] = useState(0)
   const [mealVoucherDate, setMealVoucherDate] = useState(new Date().toISOString().split('T')[0])
@@ -577,6 +582,13 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
       fetchMealVoucherInfo()
     }
   }, [mealVoucherDate, category])
+
+  // Recalcular o uso do vale-transporte conforme o mês da data do trajeto
+  useEffect(() => {
+    if (category === 'transport_voucher' && transportDate) {
+      fetchTransportVoucherEligibility()
+    }
+  }, [transportDate, category])
 
   // Carregar dados da despesa para edição
   async function loadExpenseData() {
@@ -726,8 +738,9 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
       
       // Deslocamento / Vale-Transporte
       if (expense.category === 'transport' || expense.category === 'transport_voucher') {
-        setTransportType(expense.transport_type || '')
-        setTransportMode(expense.transport_mode || '')
+    setTransportType(expense.transport_type || '')
+    setTransportMode(expense.transport_mode || '')
+    setTransportVoucherType(expense.transport_voucher_type || '')
         setTransportDate(expense.expense_date ? expense.expense_date.split('T')[0] : '')
         setTransportDepartureState(expense.departure_state || 'PE')
         setTransportDepartureCity(expense.departure_city || '')
@@ -1195,10 +1208,16 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
 
   async function fetchTransportVoucherEligibility() {
     try {
-      const response = await fetch('/api/transport-voucher/eligibility')
+      // Contabiliza o uso pelo mês da data do trajeto (não pelo mês atual)
+      const month = transportDate ? transportDate.slice(0, 7) : new Date().toISOString().slice(0, 7)
+      // Ao editar, exclui a própria despesa do total para não contá-la em dobro no limite
+      const excludeParam = mode === 'edit' && expenseId ? `&excludeId=${expenseId}` : ''
+      const response = await fetch(`/api/transport-voucher/eligibility?month=${month}${excludeParam}`)
       if (response.ok) {
         const data = await response.json()
         setTransportVoucherEnabled(data.enabled || false)
+        setTransportVoucherLimit(data.limit ?? null)
+        setTransportVoucherUsed(data.used || 0)
       }
     } catch (error) {
       console.error('Erro ao verificar elegibilidade do vale-transporte:', error)
@@ -1291,8 +1310,10 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         limitName = 'Jantar'
       }
       
-      // Para alimentação, calcular valor por pessoa (funcionário + pessoas vinculadas)
-      const totalPeople = 1 + linkedPersons.length
+      // Para alimentação, calcular valor por pessoa (pessoas vinculadas + o autor, apenas se participou)
+      // O autor conta quando a despesa foi efetuada por ele (madeBySelf) ou quando marcou que participou.
+      const authorCounts = madeBySelf || participated
+      const totalPeople = Math.max(1, linkedPersons.length + (authorCounts ? 1 : 0))
       const valuePerPerson = finalAmount / totalPeople
       
       if (limit > 0 && valuePerPerson > limit) {
@@ -1695,6 +1716,14 @@ if (odometerFiles.length >= 4) {
       return 
     }
   }
+  // Vale-Transporte: só valida limite quando houver um definido (null = ilimitado)
+  if (category === 'transport_voucher' && transportVoucherLimit !== null) {
+    const newTotal = transportVoucherUsed + parseCurrency(transportAmount)
+    if (newTotal > transportVoucherLimit) {
+      setError(`Este valor excede o limite disponível de ${formatCurrency(Math.max(0, transportVoucherLimit - transportVoucherUsed))}`)
+      return
+    }
+  }
     }
 
     setLoading(true)
@@ -1758,10 +1787,14 @@ is_capital: locationType === 'capital',
       meal_time: breakfastTime || null,
       establishment_name: establishmentName || null,
       establishment_cnpj: establishmentCnpj || null,
-      // Calcular total de pessoas: próprio usuário (1) + funcionários vinculados + terceiros
-      number_of_people: category === 'food' || category === 'accommodation' 
-        ? 1 + linkedPersons.length // +1 para incluir o próprio usuário
-        : (numberOfPeople ? parseInt(numberOfPeople) : null),
+      // Calcular total de pessoas para a divisão.
+      // Alimentação: pessoas vinculadas + o autor APENAS se ele efetuou/participou da despesa.
+      // Hospedagem: mantém o próprio usuário + vinculados (a divisão real usa a contagem por quartos).
+      number_of_people: category === 'food'
+        ? Math.max(1, linkedPersons.length + ((madeBySelf || participated) ? 1 : 0))
+        : category === 'accommodation'
+          ? 1 + linkedPersons.length // +1 para incluir o próprio usuário
+          : (numberOfPeople ? parseInt(numberOfPeople) : null),
       
       // Combustível
       vehicle_id: vehicleId ? parseInt(vehicleId) : null,
@@ -1801,6 +1834,7 @@ is_capital: locationType === 'capital',
       // Deslocamento
       transport_type: transportType || null,
       transport_mode: transportMode || null, // uber, 99pop, avião, etc
+      transport_voucher_type: transportVoucherType || null, // fuel, app, public (categoria do vale-transporte)
       origin: transportDepartureCity ? `${transportDepartureCity}/${transportDepartureState}` : (origin || null),
       destination: hasDifferentArrival && transportArrivalCity ? `${transportArrivalCity}/${transportArrivalState}` : (destination || null),
       distance_km: distanceKm ? parseFloat(distanceKm) : null,
@@ -2617,14 +2651,18 @@ is_capital: locationType === 'capital',
               </div>
 
               {/* Resumo com média por pessoa */}
-              {mealAmount && linkedPersons.length > 0 && (
+              {mealAmount && linkedPersons.length > 0 && (() => {
+                // O autor entra na divisão apenas se efetuou a despesa ou marcou que participou.
+                const authorCounts = madeBySelf || participated
+                const peopleCount = Math.max(1, linkedPersons.length + (authorCounts ? 1 : 0))
+                return (
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">
-                      Média por pessoa ({linkedPersons.length + 1} pessoas):
+                      Média por pessoa ({peopleCount} {peopleCount === 1 ? 'pessoa' : 'pessoas'}):
                     </span>
                     <span className="font-medium">
-                      {formatCurrency(parseCurrency(mealAmount) / (linkedPersons.length + 1))}
+                      {formatCurrency(parseCurrency(mealAmount) / peopleCount)}
                     </span>
                   </div>
                   {mealType && (
@@ -2637,7 +2675,8 @@ Referência por pessoa: {formatCurrency(
                     </div>
                   )}
                 </div>
-              )}
+                )
+              })()}
 
             </CardContent>
           </Card>
@@ -3258,32 +3297,55 @@ Referência por pessoa: {formatCurrency(
                 {category === 'transport_voucher' ? 'Vale-Transporte' : 'Deslocamento'}
               </CardTitle>
               {category === 'transport_voucher' && (
-                <CardDescription>Benefício sem limite de valor. Informe o trajeto e o valor pago.</CardDescription>
+                <CardDescription>
+                  {transportVoucherLimit !== null
+                    ? `Limite mensal de ${formatCurrency(transportVoucherLimit)}. Informe o trajeto e o valor pago.`
+                    : 'Benefício sem limite de valor. Informe o trajeto e o valor pago.'}
+                </CardDescription>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Tipo de Transporte */}
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label className="text-sm">Tipo de Transporte *</Label>
-                <Select value={transportMode} onValueChange={setTransportMode}>
-                  <SelectTrigger className="h-11 sm:h-10 text-base sm:text-sm">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="uber" className="py-3 sm:py-2">Uber</SelectItem>
-                    <SelectItem value="99pop" className="py-3 sm:py-2">99Pop</SelectItem>
-                    <SelectItem value="taxi" className="py-3 sm:py-2">Táxi</SelectItem>
-                    <SelectItem value="bus" className="py-3 sm:py-2">Ônibus</SelectItem>
-                    <SelectItem value="metro" className="py-3 sm:py-2">Metrô</SelectItem>
-                    <SelectItem value="train" className="py-3 sm:py-2">Trem</SelectItem>
-                    <SelectItem value="airplane" className="py-3 sm:py-2">Avião</SelectItem>
-                    <SelectItem value="rental_car" className="py-3 sm:py-2">Carro Alugado</SelectItem>
-                    <SelectItem value="motorcycle_app" className="py-3 sm:py-2">Moto (App)</SelectItem>
-                    <SelectItem value="boat" className="py-3 sm:py-2">Barco/Balsa</SelectItem>
-                    <SelectItem value="other" className="py-3 sm:py-2">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Categoria do Vale-Transporte (apenas para VT) */}
+              {category === 'transport_voucher' && (
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-sm">Tipo de Despesa *</Label>
+                  <Select value={transportVoucherType} onValueChange={setTransportVoucherType}>
+                    <SelectTrigger className="h-11 sm:h-10 text-base sm:text-sm">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fuel" className="py-3 sm:py-2">Combustível</SelectItem>
+                      <SelectItem value="app" className="py-3 sm:py-2">Deslocamento por aplicativo</SelectItem>
+                      <SelectItem value="public" className="py-3 sm:py-2">Transporte público</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Tipo de Transporte (oculto no Vale-Transporte: substituído pelo Tipo de Despesa acima) */}
+              {category !== 'transport_voucher' && (
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-sm">Tipo de Transporte *</Label>
+                  <Select value={transportMode} onValueChange={setTransportMode}>
+                    <SelectTrigger className="h-11 sm:h-10 text-base sm:text-sm">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="uber" className="py-3 sm:py-2">Uber</SelectItem>
+                      <SelectItem value="99pop" className="py-3 sm:py-2">99Pop</SelectItem>
+                      <SelectItem value="taxi" className="py-3 sm:py-2">Táxi</SelectItem>
+                      <SelectItem value="bus" className="py-3 sm:py-2">Ônibus</SelectItem>
+                      <SelectItem value="metro" className="py-3 sm:py-2">Metrô</SelectItem>
+                      <SelectItem value="train" className="py-3 sm:py-2">Trem</SelectItem>
+                      <SelectItem value="airplane" className="py-3 sm:py-2">Avião</SelectItem>
+                      <SelectItem value="rental_car" className="py-3 sm:py-2">Carro Alugado</SelectItem>
+                      <SelectItem value="motorcycle_app" className="py-3 sm:py-2">Moto (App)</SelectItem>
+                      <SelectItem value="boat" className="py-3 sm:py-2">Barco/Balsa</SelectItem>
+                      <SelectItem value="other" className="py-3 sm:py-2">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Local de Partida (endereço preciso) */}
               <div className="p-3 sm:p-4 rounded-lg bg-muted/30 space-y-3 sm:space-y-4">
@@ -3451,6 +3513,41 @@ Referência por pessoa: {formatCurrency(
                   </div>
                 </div>
               </div>
+
+              {/* Acompanhamento do limite mensal do Vale-Transporte */}
+              {category === 'transport_voucher' && transportVoucherLimit !== null && (() => {
+                const projected = transportVoucherUsed + parseCurrency(transportAmount)
+                const available = Math.max(0, transportVoucherLimit - transportVoucherUsed)
+                const exceeded = projected > transportVoucherLimit
+                const pct = Math.min(100, Math.round((projected / transportVoucherLimit) * 100))
+                return (
+                  <div className="space-y-2 rounded-lg border p-3 sm:p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                      <span>Limite mensal: <strong className="text-foreground">{formatCurrency(transportVoucherLimit)}</strong></span>
+                      <span>Utilizado: <strong className="text-foreground">{formatCurrency(transportVoucherUsed)}</strong></span>
+                      <span>Disponível: <strong className="text-foreground">{formatCurrency(available)}</strong></span>
+                    </div>
+                    {exceeded && (
+                      <div className="flex items-start gap-2 text-xs sm:text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>Este valor excede o limite disponível de {formatCurrency(available)}.</span>
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                        <span>Uso do limite mensal</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${exceeded ? 'bg-red-500' : 'bg-blue-500'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Pessoas Vinculadas */}
               <div className="space-y-3">

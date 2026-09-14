@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import { 
   Users, 
-  Plus,
+  Plus, 
   Search, 
   Edit, 
   Trash2, 
@@ -41,6 +41,7 @@ interface UserData {
   meal_voucher_enabled: boolean
   meal_voucher_limit: number | null
   transport_voucher_enabled: boolean
+  transport_voucher_limit: number | null
   created_at: string
 }
 
@@ -73,9 +74,11 @@ export default function UsersPage() {
   const [formPhone, setFormPhone] = useState("")
   const [formDepartment, setFormDepartment] = useState("")
   const [formRole, setFormRole] = useState("employee")
+  const [formPassword, setFormPassword] = useState("")
   const [formMealVoucherEnabled, setFormMealVoucherEnabled] = useState(false)
   const [formMealVoucherLimit, setFormMealVoucherLimit] = useState("250")
   const [formTransportVoucherEnabled, setFormTransportVoucherEnabled] = useState(false)
+  const [formTransportVoucherLimit, setFormTransportVoucherLimit] = useState("")
 
   useEffect(() => {
     fetchUsers()
@@ -103,9 +106,11 @@ export default function UsersPage() {
     setFormPhone("")
     setFormDepartment("")
     setFormRole("employee")
+    setFormPassword("")
     setFormMealVoucherEnabled(false)
     setFormMealVoucherLimit("250")
     setFormTransportVoucherEnabled(false)
+    setFormTransportVoucherLimit("")
     setEditingUser(null)
   }
 
@@ -116,14 +121,17 @@ export default function UsersPage() {
     setFormPhone(user.phone || "")
     setFormDepartment(user.department || "")
     setFormRole(user.role)
+    setFormPassword("")
     setFormMealVoucherEnabled(user.meal_voucher_enabled || false)
     setFormMealVoucherLimit(user.meal_voucher_limit ? String(user.meal_voucher_limit) : "250")
     setFormTransportVoucherEnabled(user.transport_voucher_enabled || false)
+    setFormTransportVoucherLimit(user.transport_voucher_limit ? String(user.transport_voucher_limit) : "")
     setIsDialogOpen(true)
   }
 
   function openNewDialog() {
-    toast.error("Cadastre novos usuários no RaroNexus")
+    resetForm()
+    setIsDialogOpen(true)
   }
 
   async function handleSubmit() {
@@ -132,7 +140,7 @@ export default function UsersPage() {
       return
     }
 
-    if (!editingUser) {
+    if (!editingUser && !formPassword) {
       toast.error("Senha é obrigatória para novos usuários")
       return
     }
@@ -148,7 +156,11 @@ export default function UsersPage() {
         role: formRole,
         meal_voucher_enabled: formMealVoucherEnabled,
         meal_voucher_limit: formMealVoucherEnabled ? parseFloat(formMealVoucherLimit) || 250 : null,
-        transport_voucher_enabled: formTransportVoucherEnabled
+        transport_voucher_enabled: formTransportVoucherEnabled,
+        transport_voucher_limit: formTransportVoucherEnabled
+          ? (formTransportVoucherLimit.trim() === '' ? null : parseFloat(formTransportVoucherLimit) || null)
+          : null,
+        ...(formPassword && { password: formPassword })
       }
 
       const res = await fetch(
@@ -228,12 +240,12 @@ export default function UsersPage() {
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          {false && <DialogTrigger asChild>
+          <DialogTrigger asChild>
             <Button onClick={openNewDialog}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Usuário
             </Button>
-          </DialogTrigger>}
+          </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>
@@ -266,7 +278,7 @@ export default function UsersPage() {
                   onChange={(e) => setFormEmail(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
                   <Input
@@ -308,8 +320,8 @@ export default function UsersPage() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  value=""
-                  disabled
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
                 />
               </div>
               
@@ -356,9 +368,28 @@ export default function UsersPage() {
                     Habilitar Vale-Transporte
                   </Label>
                 </div>
-                <p className="text-xs text-muted-foreground pl-6">
-                  Permite lançar despesas de Vale-Transporte (sem limite de valor).
-                </p>
+                {formTransportVoucherEnabled ? (
+                  <div className="space-y-2 pl-6">
+                    <Label htmlFor="transport_limit">Limite Mensal (R$)</Label>
+                    <Input
+                      id="transport_limit"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Sem limite"
+                      value={formTransportVoucherLimit}
+                      onChange={(e) => setFormTransportVoucherLimit(e.target.value)}
+                      className="w-40"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deixe em branco para não aplicar limite (apenas acompanhamento).
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground pl-6">
+                    Permite lançar despesas de Vale-Transporte.
+                  </p>
+                )}
               </div>
             </div>
             <DialogFooter>
@@ -505,7 +536,9 @@ export default function UsersPage() {
                         {user.transport_voucher_enabled ? (
                           <div className="flex items-center gap-1.5">
                             <Bus className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm">Habilitado</span>
+                            <span className="text-sm">
+                              {user.transport_voucher_limit ? formatCurrency(user.transport_voucher_limit) : "Ilimitado"}
+                            </span>
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>

@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(url.toString(), {
       signal: controller.signal,
-      headers: { 'User-Agent': 'Raropay/1.0' },
+      headers: { 'User-Agent': 'RarotecExpenses/1.0' },
       next: { revalidate: 3600 },
     })
 

@@ -10,6 +10,7 @@ import { useAuth } from '@/components/auth-provider'
 import { DashboardAlerts } from '@/components/dashboard-alerts'
 import { MealVoucherCard } from '@/components/meal-voucher-card'
 import { MealVoucherManagementCard } from '@/components/meal-voucher-management-card'
+import { TransportVoucherCard } from '@/components/transport-voucher-card'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { statusLabels, categoryLabels, type Expense } from '@/lib/types'
 import {
@@ -143,7 +144,7 @@ export default function DashboardPage() {
             Olá, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-muted-foreground">
-            Bem-vindo ao Raropay
+            Bem-vindo ao Sistema Financeiro Rarotec
           </p>
         </div>
         <Button asChild>
@@ -369,12 +370,15 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Card de Vale-Refeição */}
+      {/* Cards de Benefícios (Vale-Refeição e Vale-Transporte) */}
       {/* Gestores veem o card de gerenciamento com dados de todos, funcionários veem só seus dados */}
       {user?.role === 'manager' ? (
         <MealVoucherManagementCard />
       ) : (
-        <MealVoucherCard />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <MealVoucherCard />
+          <TransportVoucherCard />
+        </div>
       )}
 
       {/* Duas colunas: Despesas Recentes + Remessas */}

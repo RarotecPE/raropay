@@ -1,31 +1,35 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { get } from '@vercel/blob'
 import { getSession } from "@/lib/auth"
-import { getFile } from "@/lib/r2-storage"
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getSession()
     if (!user) {
-      return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 })
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
     const pathname = request.nextUrl.searchParams.get('pathname')
 
     if (!pathname) {
-      return NextResponse.json({ error: 'Pathname nao fornecido' }, { status: 400 })
+      return NextResponse.json({ error: 'Pathname não fornecido' }, { status: 400 })
     }
 
-    const result = await getFile(pathname)
+    const result = await get(pathname, {
+      access: 'private',
+      ifNoneMatch: request.headers.get('if-none-match') ?? undefined,
+    })
 
     if (!result) {
-      return new NextResponse('Arquivo nao encontrado', { status: 404 })
+      return new NextResponse('Arquivo não encontrado', { status: 404 })
     }
 
-    if (result.etag && request.headers.get('if-none-match') === result.etag) {
+    // Blob não mudou - usar cache do browser
+    if (result.statusCode === 304) {
       return new NextResponse(null, {
         status: 304,
         headers: {
-          ETag: result.etag,
+          ETag: result.blob.etag,
           'Cache-Control': 'private, no-cache',
         },
       })
@@ -33,8 +37,8 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(result.stream, {
       headers: {
-        'Content-Type': result.contentType,
-        ...(result.etag ? { ETag: result.etag } : {}),
+        'Content-Type': result.blob.contentType,
+        ETag: result.blob.etag,
         'Cache-Control': 'private, no-cache',
       },
     })

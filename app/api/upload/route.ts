@@ -1,13 +1,13 @@
+import { put } from '@vercel/blob'
 import { type NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { putFile } from '@/lib/r2-storage'
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession()
-
+    
     if (!session) {
-      return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
     const formData = await request.formData()
@@ -17,30 +17,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
     }
 
+    // Validar tipo de arquivo
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Tipo de arquivo nao permitido. Use JPG, PNG, WebP ou PDF.' },
+        { error: 'Tipo de arquivo não permitido. Use JPG, PNG, WebP ou PDF.' },
         { status: 400 }
       )
     }
 
+    // Validar tamanho (max 10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'Arquivo muito grande. Tamanho maximo: 10MB.' },
+        { error: 'Arquivo muito grande. Tamanho máximo: 10MB.' },
         { status: 400 }
       )
     }
 
+    // Gerar nome único para o arquivo
     const timestamp = Date.now()
     const extension = file.name.split('.').pop()
     const filename = `receipts/${session.id}/${timestamp}.${extension}`
-    const storedFile = await putFile(filename, file)
 
-    return NextResponse.json({
-      pathname: storedFile.pathname,
-      url: storedFile.url,
+    // A store está configurada como privada - usar access: 'private'
+    const blob = await put(filename, file, {
+      access: 'private', // Obrigatório para stores privadas
+    })
+
+    return NextResponse.json({ 
+      pathname: blob.pathname,
+      url: blob.url,
     })
   } catch (error) {
     console.error('Erro no upload:', error)

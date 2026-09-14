@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getSession, canViewAllExpenses } from '@/lib/auth'
-import { deleteFile } from '@/lib/r2-storage'
+import { del } from '@vercel/blob'
 
 // Buscar despesa por ID
 export async function GET(
@@ -208,6 +208,7 @@ export async function PUT(
     // Campos específicos por categoria
     const transport_type = body.transport_type || null
     const transport_mode = body.transport_mode || null
+    const transport_voucher_type = body.transport_voucher_type || null
     const departure_city = body.departure_city || null
     const departure_state = body.departure_state || null
     const arrival_city = body.arrival_city || null
@@ -269,6 +270,7 @@ export async function PUT(
         limit_exceeded_reason = ${limitExceededReason},
         transport_type = ${transport_type},
         transport_mode = ${transport_mode},
+        transport_voucher_type = ${transport_voucher_type},
         departure_city = ${departure_city},
         departure_state = ${departure_state},
         arrival_city = ${arrival_city},
@@ -642,7 +644,9 @@ export async function DELETE(
     // Deletar arquivos do Blob (em background, não bloqueia a resposta)
     const deletePromises = filesToDelete.map(async (pathname) => {
       try {
-        await deleteFile(pathname)
+        // Construir URL do blob a partir do pathname
+        const blobUrl = `https://${process.env.BLOB_STORE_ID}.public.blob.vercel-storage.com/${pathname}`
+        await del(blobUrl)
       } catch (err) {
         console.error(`Erro ao deletar arquivo ${pathname}:`, err)
       }

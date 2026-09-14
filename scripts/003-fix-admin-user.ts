@@ -1,8 +1,8 @@
-import postgres from 'postgres'
+import { neon } from '@neondatabase/serverless'
 import bcrypt from 'bcryptjs'
 
 async function fixAdminUser() {
-  const sql = postgres(process.env.DATABASE_CONNECTION!, { prepare: false })
+  const sql = neon(process.env.DATABASE_URL!)
   
   // Hash da senha admin123
   const hashedPassword = await bcrypt.hash('admin123', 12)
@@ -22,6 +22,4 @@ async function fixAdminUser() {
   console.log('Senha: admin123')
 }
 
-fixAdminUser()
-  .catch(console.error)
-  .finally(() => process.exit())
+fixAdminUser().catch(console.error)
