@@ -6,6 +6,7 @@ export interface AppBranding {
 
 export const DEFAULT_BRANDING: AppBranding = {
   name: "Raropay",
-  logoUrl: "/images/logo-rarotec.png",
-  faviconUrl: "/images/logo-rarotec.png",
+  logoUrl: "/images/logo-raropay.png",
+  faviconUrl: "/favicon.png",
 }
+

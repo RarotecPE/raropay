@@ -267,11 +267,11 @@ export function AppSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <Link href="/dashboard" className="flex items-center gap-3" onClick={handleNavigation}>
-          <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden">
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white p-0.5 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <img
               src={branding.logoUrl}
               alt={branding.name}
-              className="max-h-8 max-w-8 object-contain"
+              className="h-[34px] w-[34px] object-contain"
             />
           </div>
           <div className="flex flex-col">

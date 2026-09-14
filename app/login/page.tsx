@@ -65,11 +65,13 @@ function LoginContent() {
     <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-4">
-          <img
-            src={branding.logoUrl}
-            alt={branding.name}
-            className="mx-auto h-16 w-16 rounded-2xl bg-white object-contain"
-          />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] bg-white p-1 shadow-lg ring-1 ring-white/15">
+            <img
+              src={branding.logoUrl}
+              alt={branding.name}
+              className="h-full w-full object-contain"
+            />
+          </div>
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold tracking-normal">{branding.name}</h1>
             <p className="text-sm text-slate-300">
