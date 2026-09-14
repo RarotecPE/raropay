@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import type { SessionUser } from "@/lib/auth"
 
@@ -27,6 +27,7 @@ function loginUrl(pathname: string) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const redirectingRef = useRef(false)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -74,12 +75,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     window.fetch = async (input, init) => {
       const response = await originalFetch(input, init)
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url
+      const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url
 
-      if (response.status === 401 && url.startsWith("/api/") && !url.startsWith("/api/auth/")) {
-        await originalFetch("/api/auth/logout", { method: "POST" })
-        setUser(null)
-        window.location.replace(loginUrl(window.location.pathname))
+      let isProtectedApi = false
+      try {
+        const parsed = new URL(rawUrl, window.location.origin)
+        isProtectedApi =
+          parsed.origin === window.location.origin &&
+          parsed.pathname.startsWith("/api/") &&
+          !parsed.pathname.startsWith("/api/auth/")
+      } catch {
+        isProtectedApi = false
+      }
+
+      if (response.status === 401 && isProtectedApi) {
+        if (!redirectingRef.current) {
+          redirectingRef.current = true
+          await originalFetch("/api/auth/logout", { method: "POST" }).catch(() => null)
+          setUser(null)
+          window.location.replace(loginUrl(window.location.pathname))
+        }
       }
 
       return response

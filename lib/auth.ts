@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import { NextResponse, type NextRequest } from "next/server"
+import { cache } from "react"
 import * as bcrypt from "bcryptjs"
 import { sql, type UserRole } from "./db"
 
@@ -296,40 +297,74 @@ export async function getGlobalSessionTokenFromCookies(): Promise<string | null>
   )
 }
 
+interface CachedSession {
+  user: SessionUser
+  expiresAt: number
+}
+
+const sessionCache = new Map<string, CachedSession>()
+const sessionInflight = new Map<string, Promise<SessionUser | null>>()
+const SESSION_CACHE_TTL_MS = 15_000 // 15s de cache em memória para requisições concorrentes
+
+export function invalidateSessionCache(token?: string | null) {
+  if (token) {
+    sessionCache.delete(token)
+    sessionInflight.delete(token)
+  } else {
+    sessionCache.clear()
+    sessionInflight.clear()
+  }
+}
+
+export async function getSessionFromToken(token: string | null): Promise<SessionUser | null> {
+  if (!token) return null
+
+  const cached = sessionCache.get(token)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.user
+  }
+
+  const pending = sessionInflight.get(token)
+  if (pending) return pending
+
+  const promise = (async () => {
+    try {
+      const session = await introspectToken(token)
+      if (!session) {
+        sessionCache.delete(token)
+        return null
+      }
+      const localUser = await ensureLocalUser(session)
+      if (localUser) {
+        sessionCache.set(token, {
+          user: localUser,
+          expiresAt: Date.now() + SESSION_CACHE_TTL_MS,
+        })
+      } else {
+        sessionCache.delete(token)
+      }
+      return localUser
+    } catch (error) {
+      console.error("Erro ao introspectar sessão RaroNexus:", error)
+      return null
+    }
+  })().finally(() => {
+    sessionInflight.delete(token)
+  })
+
+  sessionInflight.set(token, promise)
+  return promise
+}
+
 export async function getSessionFromRequest(request: NextRequest | Request): Promise<SessionUser | null> {
   const token = getGlobalSessionToken(request)
-
-  if (!token) {
-    return null
-  }
-
-  try {
-    const session = await introspectToken(token)
-    if (!session) return null
-    return ensureLocalUser(session)
-  } catch (error) {
-    console.error("Erro ao introspectar sessão RaroNexus:", error)
-    return null
-  }
+  return getSessionFromToken(token)
 }
 
-export async function getSession(): Promise<SessionUser | null> {
-  const cookieStore = await cookies()
-  const token = cookieStore.get(SESSION_COOKIE)?.value
-
-  if (!token) {
-    return null
-  }
-
-  try {
-    const session = await introspectToken(token)
-    if (!session) return null
-    return ensureLocalUser(session)
-  } catch (error) {
-    console.error("Erro ao obter sessão:", error)
-    return null
-  }
-}
+export const getSession = cache(async function getSession(): Promise<SessionUser | null> {
+  const token = await getGlobalSessionTokenFromCookies()
+  return getSessionFromToken(token)
+})
 
 export function getRoleLabel(role: UserRole) {
   return roleLabels[role] || role

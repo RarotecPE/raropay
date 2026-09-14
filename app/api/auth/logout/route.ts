@@ -1,10 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { SESSION_COOKIE, clearAuthCookies, getRaroNexusConfig } from "@/lib/auth"
+import {
+  clearAuthCookies,
+  getGlobalSessionToken,
+  getRaroNexusConfig,
+  invalidateSessionCache,
+} from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get(SESSION_COOKIE)?.value
+  const token = getGlobalSessionToken(request)
 
   if (token) {
+    invalidateSessionCache(token)
     try {
       const config = getRaroNexusConfig()
       await fetch(`${config.baseUrl}/api/v1/sessions/revoke`, {
