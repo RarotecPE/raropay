@@ -52,48 +52,64 @@ function createSql(value: string) {
 
 let _sql: ReturnType<typeof postgres> | null = null
 
-function getSql() {
+function getSql(): ReturnType<typeof postgres> {
   if (_sql) return _sql
+
   const connectionString = getRawConnection()
+
   if (!connectionString) {
-    // Durante build sem env, retorna proxy que falha apenas se usado em runtime
-    // Isso evita que o build quebre na fase de coleta de páginas
-    if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV !== 'production') {
-      // Em build, cria um proxy que lança erro apenas quando chamado
-      const dummy = new Proxy(() => {}, {
-        get(_, prop) {
-          if (prop === 'then') return undefined
-          return () => {
-            throw new Error('DATABASE_CONNECTION não configurada')
-          }
-        },
-        apply() {
-          throw new Error('DATABASE_CONNECTION não configurada')
-        },
-      }) as unknown as ReturnType<typeof postgres>
-      return dummy
+    // Em build (NEXT_PHASE) não quebra o build, retorna um stub que só falha se realmente usado em runtime
+    const isBuild = process.env.NEXT_PHASE === 'phase-production-build'
+    if (isBuild) {
+      // Stub callable que não faz nada durante build, mas falha se usado fora do build sem env
+      const dummyFn = (..._args: unknown[]) => {
+        // Durante build, retorna array vazio para não quebrar coleta de páginas
+        // Em runtime sem env, lança erro explicativo
+        if (process.env.NEXT_PHASE === 'phase-production-build') {
+          return Promise.resolve([]) as unknown as ReturnType<typeof postgres>
+        }
+        throw new Error('DATABASE_CONNECTION não configurada')
+      }
+      // @ts-expect-error - stub compatível
+      dummyFn.unsafe = dummyFn
+      // @ts-expect-error
+      dummyFn.begin = async () => { throw new Error('DATABASE_CONNECTION não configurada') }
+      // @ts-expect-error
+      dummyFn.end = async () => {}
+      return dummyFn as unknown as ReturnType<typeof postgres>
     }
     throw new Error('DATABASE_CONNECTION não configurada')
   }
+
   _sql = createSql(connectionString)
   return _sql
 }
 
-// Exporta como proxy para manter compatibilidade com `sql` tag
-const sql = new Proxy({} as ReturnType<typeof postgres>, {
-  get(_, prop) {
-    const real = getSql() as any
-    const val = real[prop]
-    if (typeof val === 'function') return val.bind(real)
+// Função base que delega para o sql real (lazy)
+function sqlBase(...args: Parameters<ReturnType<typeof postgres>>): ReturnType<ReturnType<typeof postgres>> {
+  const real = getSql() as unknown as (...a: unknown[]) => unknown
+  return real(...args) as ReturnType<ReturnType<typeof postgres>>
+}
+
+// Proxy que torna sql callable como tag e expõe propriedades (end, unsafe, etc)
+export const sql = new Proxy(sqlBase as unknown as ReturnType<typeof postgres>, {
+  get(target, prop, receiver) {
+    // Propriedades do próprio wrapper (se houver)
+    if (prop in target) {
+      return Reflect.get(target, prop, receiver)
+    }
+    const real = getSql() as unknown as Record<string | symbol, unknown>
+    const val = real[prop as string]
+    if (typeof val === 'function') {
+      return (val as (...a: unknown[]) => unknown).bind(real)
+    }
     return val
   },
-  apply(_, __, args) {
-    const real = getSql() as any
-    return real(...args)
+  apply(_target, _thisArg, args) {
+    const real = getSql() as unknown as (...a: unknown[]) => unknown
+    return real(...(args as unknown[]))
   },
 }) as unknown as ReturnType<typeof postgres>
-
-export { sql }
 
 // Re-exportar tipos
 export * from './types'
