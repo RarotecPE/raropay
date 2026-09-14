@@ -52,6 +52,7 @@ import {
   Phone,
   Camera,
   Eye,
+  Bus,
 } from 'lucide-react'
 
 const statusColors: Record<string, string> = {
@@ -1581,6 +1582,22 @@ return (
                   Informações do Transporte
                 </h4>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {expense.transport_voucher_type && (
+                    <DetailItem
+                      icon={Bus}
+                      label="Tipo de Despesa"
+                      value={
+                        expense.transport_voucher_type === 'fuel'
+                          ? 'Combustível'
+                          : expense.transport_voucher_type === 'app'
+                            ? 'Deslocamento por aplicativo'
+                            : expense.transport_voucher_type === 'public'
+                              ? 'Transporte público'
+                              : expense.transport_voucher_type
+                      }
+                      highlight
+                    />
+                  )}
                   <DetailItem icon={Car} label="Tipo de Transporte" value={expense.transport_type ? (transportLabels[expense.transport_type] || expense.transport_type) : null} highlight />
                   <DetailItem icon={Calendar} label="Data" value={expense.expense_date ? formatDate(expense.expense_date) : null} />
                   {/* Removido: is_round_trip não é mais usado */}

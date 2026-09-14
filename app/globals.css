@@ -142,6 +142,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body {
+    @apply max-w-full overflow-x-hidden;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";

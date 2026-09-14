@@ -9,17 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner"
 import { useAuth } from "@/components/auth-provider"
 import { formatCurrency } from "@/lib/format"
-import { Bus, ArrowLeft, TrendingUp, Users, Receipt, History, BarChart3 } from "lucide-react"
+import { Bus, ArrowLeft, TrendingUp, Users, Wallet, History } from "lucide-react"
 import Link from "next/link"
 
 interface UserVoucherData {
   id: number
   name: string
   department: string | null
+  limit: number | null
   used: number
+  available: number | null
   transactionsCount: number
-  sharePercent: number
-  totalSharePercent: number
+  utilizationRate: number | null
 }
 
 interface MonthData {
@@ -27,8 +28,8 @@ interface MonthData {
   year: number
   monthName: string
   usersCount: number
-  totalUsed: number
   transactionsCount: number
+  totalUsed: number
   avgPerUser: number
 }
 
@@ -36,11 +37,16 @@ interface CurrentMonthData {
   month: number
   year: number
   monthName: string
+  hasLimits: boolean
   usersCount: number
+  usersWithLimitCount: number
+  totalLimit: number
   totalUsed: number
-  totalTransactions: number
+  totalUsedAll: number
+  totalAvailable: number
   avgPerUser: number
-  maxUsed: number
+  totalTransactions: number
+  utilizationRate: number
 }
 
 interface ManagementData {
@@ -110,7 +116,7 @@ export default function TransportVoucherManagementPage() {
           <Bus className="h-6 w-6 text-sky-600" />
           Acompanhamento de Vale-Transporte
         </h1>
-        <p className="text-muted-foreground">Nível de gastos por funcionário</p>
+        <p className="text-muted-foreground">Controle mensal por funcionário</p>
       </div>
     </div>
   )
@@ -138,6 +144,15 @@ export default function TransportVoucherManagementPage() {
         label: `${capitalize(h.monthName)} ${h.year}`,
       })),
   ]
+
+  const barColor = (rate: number) =>
+    rate > 90 ? "bg-red-500" : rate > 75 ? "bg-amber-500" : "bg-sky-500"
+  const badgeColor = (rate: number) =>
+    rate > 90 ? "border-red-500 text-red-600" : rate > 75 ? "border-amber-500 text-amber-600" : "border-sky-500 text-sky-700"
+
+  const hasLimits = data.currentMonth.hasLimits
+  // Maior gasto do mês, usado na barra comparativa quando não há limites definidos
+  const maxUsed = Math.max(0, ...data.users.map((u) => u.used))
 
   return (
     <div className="p-6 space-y-6">
@@ -173,44 +188,103 @@ export default function TransportVoucherManagementPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <TrendingUp className="h-4 w-4" />
-              Total Gasto
-            </CardDescription>
-            <CardTitle className="text-2xl text-sky-700">{formatCurrency(data.currentMonth.totalUsed)}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">No mês selecionado</p>
-          </CardContent>
-        </Card>
+        {data.currentMonth.hasLimits ? (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-1">
+                  <Wallet className="h-4 w-4" />
+                  Limite Total
+                </CardDescription>
+                <CardTitle className="text-2xl">{formatCurrency(data.currentMonth.totalLimit)}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  Soma dos limites{" "}
+                  {data.currentMonth.usersWithLimitCount < data.currentMonth.usersCount &&
+                    `(${data.currentMonth.usersWithLimitCount} de ${data.currentMonth.usersCount} com limite)`}
+                </p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <BarChart3 className="h-4 w-4" />
-              Média por Funcionário
-            </CardDescription>
-            <CardTitle className="text-2xl">{formatCurrency(data.currentMonth.avgPerUser)}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Gasto médio no mês</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4" />
+                  Utilizado
+                </CardDescription>
+                <CardTitle className="text-2xl text-sky-700">{formatCurrency(data.currentMonth.totalUsed)}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${barColor(data.currentMonth.utilizationRate)}`}
+                      style={{ width: `${Math.min(100, data.currentMonth.utilizationRate)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium">{data.currentMonth.utilizationRate}%</span>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <Receipt className="h-4 w-4" />
-              Lançamentos
-            </CardDescription>
-            <CardTitle className="text-2xl">{data.currentMonth.totalTransactions}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Despesas registradas</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-1">
+                  <Wallet className="h-4 w-4" />
+                  Disponível
+                </CardDescription>
+                <CardTitle className={`text-2xl ${data.currentMonth.totalAvailable < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                  {formatCurrency(data.currentMonth.totalAvailable)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Saldo restante dos limites</p>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4" />
+                  Total Gasto
+                </CardDescription>
+                <CardTitle className="text-2xl text-sky-700">{formatCurrency(data.currentMonth.totalUsedAll)}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">No mês selecionado</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-1">
+                  <Wallet className="h-4 w-4" />
+                  Média por Funcionário
+                </CardDescription>
+                <CardTitle className="text-2xl">{formatCurrency(data.currentMonth.avgPerUser)}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Gasto médio no mês</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-1">
+                  <History className="h-4 w-4" />
+                  Lançamentos
+                </CardDescription>
+                <CardTitle className="text-2xl">{data.currentMonth.totalTransactions}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Despesas registradas</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Tabela de Funcionários */}
@@ -218,49 +292,101 @@ export default function TransportVoucherManagementPage() {
         <CardHeader>
           <CardTitle>Detalhamento por Funcionário</CardTitle>
           <CardDescription>
-            {capitalize(data.currentMonth.monthName)} {data.currentMonth.year} · barra relativa ao maior gasto do mês
+            {capitalize(data.currentMonth.monthName)} {data.currentMonth.year}
+            {!hasLimits && " · barra relativa ao maior gasto do mês"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Funcionário</TableHead>
-                  <TableHead>Departamento</TableHead>
-                  <TableHead className="text-center">Lançamentos</TableHead>
-                  <TableHead className="text-right">Gasto no Mês</TableHead>
-                  <TableHead className="text-center">Comparativo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.users.map((userItem) => (
-                  <TableRow key={userItem.id}>
-                    <TableCell className="font-medium">{userItem.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{userItem.department || "-"}</TableCell>
-                    <TableCell className="text-center">{userItem.transactionsCount}</TableCell>
-                    <TableCell className="text-right font-mono text-sky-700">{formatCurrency(userItem.used)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-sky-500 transition-all"
-                            style={{ width: `${Math.min(100, userItem.sharePercent)}%` }}
-                          />
-                        </div>
-                        <Badge variant="outline" className="min-w-[52px] justify-center border-sky-500 text-sky-700">
-                          {userItem.totalSharePercent}%
-                        </Badge>
-                      </div>
-                    </TableCell>
+            {hasLimits ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funcionário</TableHead>
+                    <TableHead>Departamento</TableHead>
+                    <TableHead className="text-right">Limite</TableHead>
+                    <TableHead className="text-right">Utilizado</TableHead>
+                    <TableHead className="text-right">Disponível</TableHead>
+                    <TableHead className="text-center">Uso</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {data.users.map((userItem) => (
+                    <TableRow key={userItem.id}>
+                      <TableCell className="font-medium">{userItem.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{userItem.department || "-"}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {userItem.limit != null ? formatCurrency(userItem.limit) : <span className="text-muted-foreground">Ilimitado</span>}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sky-700">{formatCurrency(userItem.used)}</TableCell>
+                      <TableCell className="text-right font-mono text-emerald-600">
+                        {userItem.available != null ? formatCurrency(userItem.available) : <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        {userItem.utilizationRate != null ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all ${barColor(userItem.utilizationRate)}`}
+                                style={{ width: `${Math.min(100, userItem.utilizationRate)}%` }}
+                              />
+                            </div>
+                            <Badge variant="outline" className={`min-w-[50px] justify-center ${badgeColor(userItem.utilizationRate)}`}>
+                              {userItem.utilizationRate}%
+                            </Badge>
+                          </div>
+                        ) : (
+                          <div className="flex justify-center">
+                            <Badge variant="outline" className="min-w-[50px] justify-center text-muted-foreground">
+                              -
+                            </Badge>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funcionário</TableHead>
+                    <TableHead>Departamento</TableHead>
+                    <TableHead className="text-center">Lançamentos</TableHead>
+                    <TableHead className="text-right">Gasto no Mês</TableHead>
+                    <TableHead className="text-center">Comparativo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.users.map((userItem) => {
+                    const pct = maxUsed > 0 ? Math.round((userItem.used / maxUsed) * 100) : 0
+                    return (
+                      <TableRow key={userItem.id}>
+                        <TableCell className="font-medium">{userItem.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{userItem.department || "-"}</TableCell>
+                        <TableCell className="text-center">{userItem.transactionsCount}</TableCell>
+                        <TableCell className="text-right font-mono text-sky-700">{formatCurrency(userItem.used)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full transition-all bg-sky-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <Badge variant="outline" className="min-w-[50px] justify-center border-sky-500 text-sky-700">
+                              {pct}%
+                            </Badge>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            O percentual no selo indica a participação do funcionário no total gasto do mês.
-          </p>
         </CardContent>
       </Card>
 

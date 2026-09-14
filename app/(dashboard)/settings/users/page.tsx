@@ -41,6 +41,7 @@ interface UserData {
   meal_voucher_enabled: boolean
   meal_voucher_limit: number | null
   transport_voucher_enabled: boolean
+  transport_voucher_limit: number | null
   created_at: string
 }
 
@@ -76,6 +77,7 @@ export default function UsersPage() {
   const [formMealVoucherEnabled, setFormMealVoucherEnabled] = useState(false)
   const [formMealVoucherLimit, setFormMealVoucherLimit] = useState("250")
   const [formTransportVoucherEnabled, setFormTransportVoucherEnabled] = useState(false)
+  const [formTransportVoucherLimit, setFormTransportVoucherLimit] = useState("")
 
   useEffect(() => {
     fetchUsers()
@@ -106,6 +108,7 @@ export default function UsersPage() {
     setFormMealVoucherEnabled(false)
     setFormMealVoucherLimit("250")
     setFormTransportVoucherEnabled(false)
+    setFormTransportVoucherLimit("")
     setEditingUser(null)
   }
 
@@ -119,6 +122,7 @@ export default function UsersPage() {
     setFormMealVoucherEnabled(user.meal_voucher_enabled || false)
     setFormMealVoucherLimit(user.meal_voucher_limit ? String(user.meal_voucher_limit) : "250")
     setFormTransportVoucherEnabled(user.transport_voucher_enabled || false)
+    setFormTransportVoucherLimit(user.transport_voucher_limit ? String(user.transport_voucher_limit) : "")
     setIsDialogOpen(true)
   }
 
@@ -148,7 +152,10 @@ export default function UsersPage() {
         role: formRole,
         meal_voucher_enabled: formMealVoucherEnabled,
         meal_voucher_limit: formMealVoucherEnabled ? parseFloat(formMealVoucherLimit) || 250 : null,
-        transport_voucher_enabled: formTransportVoucherEnabled
+        transport_voucher_enabled: formTransportVoucherEnabled,
+        transport_voucher_limit: formTransportVoucherEnabled
+          ? (formTransportVoucherLimit === "" ? null : parseFloat(formTransportVoucherLimit))
+          : null,
       }
 
       const res = await fetch(
@@ -356,9 +363,28 @@ export default function UsersPage() {
                     Habilitar Vale-Transporte
                   </Label>
                 </div>
-                <p className="text-xs text-muted-foreground pl-6">
-                  Permite lançar despesas de Vale-Transporte (sem limite de valor).
-                </p>
+                {formTransportVoucherEnabled ? (
+                  <div className="space-y-2 pl-6">
+                    <Label htmlFor="transport_limit">Limite Mensal (R$) - deixe vazio para ilimitado</Label>
+                    <Input
+                      id="transport_limit"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Ex: 300 (vazio = ilimitado)"
+                      value={formTransportVoucherLimit}
+                      onChange={(e) => setFormTransportVoucherLimit(e.target.value)}
+                      className="w-60"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Se definido, o sistema controla utilização e bloqueia ao exceder. Vazio = sem limite.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground pl-6">
+                    Permite lançar despesas de Vale-Transporte. Defina um limite opcional para controle orçamentário.
+                  </p>
+                )}
               </div>
             </div>
             <DialogFooter>
@@ -503,9 +529,15 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>
                         {user.transport_voucher_enabled ? (
-                          <div className="flex items-center gap-1.5">
-                            <Bus className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm">Habilitado</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5">
+                              <Bus className="h-4 w-4 text-blue-500" />
+                              <span className="text-sm">
+                                {user.transport_voucher_limit != null
+                                  ? formatCurrency(user.transport_voucher_limit)
+                                  : "Ilimitado"}
+                              </span>
+                            </div>
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>

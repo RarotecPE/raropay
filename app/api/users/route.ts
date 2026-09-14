@@ -16,14 +16,14 @@ export async function GET(request: NextRequest) {
     const users = activeOnly
       ? await sql`
           SELECT id, name, email, role, department, active, active as is_active,
-                 meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, created_at
+                 meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, transport_voucher_limit, created_at
           FROM users
           WHERE active = true
           ORDER BY name
         `
       : await sql`
           SELECT id, name, email, role, department, active, active as is_active,
-                 meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, created_at
+                 meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, transport_voucher_limit, created_at
           FROM users
           ORDER BY name
         `
