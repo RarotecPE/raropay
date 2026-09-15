@@ -120,11 +120,11 @@ export function TransportVoucherManagementCard() {
                   <TrendingUp className="h-3 w-3" />
                   Utilizado
                 </div>
-                <p className="text-xl font-bold text-sky-700">{formatCurrency(data.currentMonth.totalUsed)}</p>
+                <p className="text-xl font-bold text-sky-700 dark:text-sky-400">{formatCurrency(data.currentMonth.totalUsed)}</p>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs mb-1">Disponível</div>
-                <p className={`text-xl font-bold ${data.currentMonth.totalAvailable < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                <p className={`text-xl font-bold ${data.currentMonth.totalAvailable < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                   {formatCurrency(data.currentMonth.totalAvailable)}
                 </p>
               </div>
@@ -136,7 +136,7 @@ export function TransportVoucherManagementCard() {
                   <TrendingUp className="h-3 w-3" />
                   Total Gasto
                 </div>
-                <p className="text-xl font-bold text-sky-700">{formatCurrency(data.currentMonth.totalUsedAll)}</p>
+                <p className="text-xl font-bold text-sky-700 dark:text-sky-400">{formatCurrency(data.currentMonth.totalUsedAll)}</p>
               </div>
               <div>
                 <div className="text-muted-foreground text-xs mb-1">Média/Func.</div>
@@ -173,16 +173,16 @@ export function TransportVoucherManagementCard() {
               <div key={user.id} className="flex items-center justify-between text-sm">
                 <span className="truncate flex-1">{user.name}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sky-700 font-mono text-xs">{formatCurrency(user.used)}</span>
+                  <span className="text-sky-700 dark:text-sky-400 font-mono text-xs">{formatCurrency(user.used)}</span>
                   {user.utilizationRate != null && (
                     <>
                       {user.utilizationRate > 90 && <AlertTriangle className="h-3 w-3 text-red-500" />}
                       <Badge
                         variant="outline"
                         className={`text-xs ${
-                          user.utilizationRate > 90 ? 'border-red-500 text-red-600' :
-                          user.utilizationRate > 75 ? 'border-amber-500 text-amber-600' :
-                          'border-sky-500 text-sky-700'
+                          user.utilizationRate > 90 ? 'border-red-500 text-red-600 dark:border-red-500/50 dark:text-red-400' :
+                          user.utilizationRate > 75 ? 'border-amber-500 text-amber-600 dark:border-amber-500/50 dark:text-amber-400' :
+                          'border-sky-500 text-sky-700 dark:border-sky-500/50 dark:text-sky-300'
                         }`}
                       >
                         {user.utilizationRate}%

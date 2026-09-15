@@ -182,7 +182,7 @@ export default function AdvanceDetailPage() {
           {detail.payment_method === 'boleto' && detail.boleto_code && (
             <div>
               <p className="text-sm text-muted-foreground mb-1">Código do boleto</p>
-              <p className="text-sm font-mono break-all bg-amber-50 border border-amber-200 text-amber-900 rounded-md p-3">
+              <p className="text-sm font-mono break-all bg-amber-50 border border-amber-200 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200 rounded-md p-3">
                 {detail.boleto_code}
               </p>
             </div>
@@ -196,7 +196,7 @@ export default function AdvanceDetailPage() {
           {detail.review_note && (
             <div>
               <p className="text-sm text-muted-foreground mb-1">Observação do financeiro</p>
-              <p className="text-sm bg-blue-50 border border-blue-200 text-blue-900 rounded-md p-3">
+              <p className="text-sm bg-blue-50 border border-blue-200 text-blue-900 dark:bg-blue-950/40 dark:border-blue-800/60 dark:text-blue-200 rounded-md p-3">
                 {detail.review_note}
               </p>
             </div>

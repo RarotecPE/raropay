@@ -209,7 +209,7 @@ export default function RejectedExpensesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <DollarSign className="w-4 h-4 text-blue-600" />
+                <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Cartão Corp.</p>
@@ -227,7 +227,7 @@ export default function RejectedExpensesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                <RefreshCw className="w-4 h-4 text-emerald-600" />
+                <RefreshCw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Reembolso</p>
@@ -245,7 +245,7 @@ export default function RejectedExpensesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Adiantamento</p>

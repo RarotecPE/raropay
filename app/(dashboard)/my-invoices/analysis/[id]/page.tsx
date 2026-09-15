@@ -266,11 +266,11 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50">Pendente</Badge>
       case 'in_progress':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Em Andamento</Badge>
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50">Em Andamento</Badge>
       case 'resolved':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Resolvida</Badge>
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50">Resolvida</Badge>
       default:
         return null
     }
@@ -450,12 +450,12 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Despesas Vinculadas para Revisão */}
       {linkedExpenses && linkedExpenses.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/30">
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/20">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Despesas para Revisão
-              <Badge variant="outline" className="ml-auto bg-amber-100 text-amber-800 border-amber-300">
+              <Badge variant="outline" className="ml-auto bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300 dark:border-amber-800">
                 {linkedExpenses.length}
               </Badge>
             </CardTitle>
@@ -468,8 +468,8 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
               {linkedExpenses.map(expense => (
                 <div 
                   key={expense.id}
-                  className={`p-4 rounded-lg border bg-white ${
-                    expense.edited_at ? 'border-green-300' : 'border-amber-200'
+                  className={`p-4 rounded-lg border bg-card ${
+                    expense.edited_at ? 'border-green-300 dark:border-green-800' : 'border-amber-200 dark:border-amber-800'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -477,7 +477,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{expense.description}</span>
                         {expense.edited_at && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                          <Badge variant="outline" className="bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 text-xs">
                             Editada
                           </Badge>
                         )}
@@ -496,12 +496,12 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
                         </span>
                       </div>
                       {expense.reason && (
-                        <p className="mt-2 text-sm text-amber-700 bg-amber-50 px-2 py-1 rounded">
+                        <p className="mt-2 text-sm text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/40 px-2 py-1 rounded">
                           <strong>Motivo:</strong> {expense.reason}
                         </p>
                       )}
                       {expense.edit_notes && (
-                        <p className="mt-2 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
+                        <p className="mt-2 text-sm text-green-700 bg-green-50 dark:text-emerald-300 dark:bg-emerald-950/40 px-2 py-1 rounded">
                           <strong>Alterações:</strong> {expense.edit_notes}
                         </p>
                       )}
@@ -684,7 +684,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
           {/* Status resolvido */}
           {request.status === 'resolved' && (
             <div className="border-t pt-4">
-              <div className="flex items-center gap-2 text-green-600 bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 text-green-600 dark:text-emerald-400 bg-green-50 dark:bg-emerald-950/30 p-4 rounded-lg">
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Esta solicitação foi marcada como resolvida em {formatDateTime(request.resolved_at || '')}</span>
               </div>
@@ -827,7 +827,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 )}
                 {receiptFile && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
+                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-emerald-400">
                     <FileText className="w-4 h-4" />
                     <span>{receiptFile.name}</span>
                     <button onClick={() => setReceiptFile(null)} className="text-muted-foreground hover:text-destructive">

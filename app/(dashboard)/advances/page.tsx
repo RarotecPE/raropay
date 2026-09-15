@@ -240,7 +240,7 @@ export default function AdvancesPage() {
                   </p>
                 )}
                 {(pixMissing || accountMissing) && (
-                  <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                  <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 border border-destructive/30 dark:border-destructive/40 rounded-md p-2">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>
                       Você ainda não cadastrou esses dados.{' '}

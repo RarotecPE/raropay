@@ -109,7 +109,7 @@ export function TransportVoucherCard() {
               <Progress value={data.percentage} className="h-2" />
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Disponível</span>
-                <span className={`font-medium ${(data.available ?? 0) <= 50 ? 'text-amber-600' : 'text-green-600'}`}>
+                <span className={`font-medium ${(data.available ?? 0) <= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                   {formatCurrency(data.available ?? 0)}
                 </span>
               </div>

@@ -160,7 +160,7 @@ export default function FinancialDashboardPage() {
           <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="p-3 rounded-xl bg-amber-500/10">
-                <Clock className="w-6 h-6 text-amber-600" />
+                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="font-semibold">Análise de Remessas</p>
@@ -176,7 +176,7 @@ export default function FinancialDashboardPage() {
           <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="p-3 rounded-xl bg-emerald-500/10">
-                <Banknote className="w-6 h-6 text-emerald-600" />
+                <Banknote className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="font-semibold">Reembolsos a Pagar</p>
@@ -195,7 +195,7 @@ export default function FinancialDashboardPage() {
           <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="p-3 rounded-xl bg-red-500/10">
-                <XCircle className="w-6 h-6 text-red-600" />
+                <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="font-semibold">Rejeitadas</p>
@@ -232,7 +232,7 @@ export default function FinancialDashboardPage() {
               <Clock className="w-4 h-4" />
               Remessas Aguardando Análise
             </CardDescription>
-            <CardTitle className="text-3xl text-amber-600">
+            <CardTitle className="text-3xl text-amber-600 dark:text-amber-400">
               {stats?.batchesPendingAnalysis || 0}
             </CardTitle>
           </CardHeader>
@@ -249,7 +249,7 @@ export default function FinancialDashboardPage() {
               <AlertCircle className="w-4 h-4" />
               Em Correção
             </CardDescription>
-            <CardTitle className="text-3xl text-orange-600">
+            <CardTitle className="text-3xl text-orange-600 dark:text-orange-400">
               {stats?.batchesInCorrection || 0}
             </CardTitle>
           </CardHeader>
@@ -266,7 +266,7 @@ export default function FinancialDashboardPage() {
               <CheckCircle2 className="w-4 h-4" />
               Remessas Aprovadas (Mês)
             </CardDescription>
-            <CardTitle className="text-3xl text-emerald-600">
+            <CardTitle className="text-3xl text-emerald-600 dark:text-emerald-400">
               {stats?.batchesApproved || 0}
             </CardTitle>
           </CardHeader>
@@ -283,7 +283,7 @@ export default function FinancialDashboardPage() {
               <XCircle className="w-4 h-4" />
               Remessas Rejeitadas (Mês)
             </CardDescription>
-            <CardTitle className="text-3xl text-red-600">
+            <CardTitle className="text-3xl text-red-600 dark:text-red-400">
               {stats?.batchesRejected || 0}
             </CardTitle>
           </CardHeader>
@@ -320,7 +320,7 @@ export default function FinancialDashboardPage() {
               <TrendingUp className="w-4 h-4" />
               Reembolsos Pagos (Mês)
             </CardDescription>
-            <CardTitle className="text-2xl text-emerald-600">
+            <CardTitle className="text-2xl text-emerald-600 dark:text-emerald-400">
               {formatCurrency(stats?.paidThisMonthAmount || 0)}
             </CardTitle>
           </CardHeader>
@@ -439,7 +439,7 @@ export default function FinancialDashboardPage() {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
-                          <SettlementIcon className="w-4 h-4 text-emerald-600" />
+                          <SettlementIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium truncate">{batch.user_name}</p>
@@ -451,11 +451,11 @@ export default function FinancialDashboardPage() {
                       <div className="flex items-center justify-between gap-2 sm:flex-col sm:items-end sm:text-right">
                         <p className="font-semibold whitespace-nowrap">{formatCurrency(batch.total_amount)}</p>
                         {batch.is_paid ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-600 text-xs whitespace-nowrap">
+                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs whitespace-nowrap">
                             Pago
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-amber-600 text-xs whitespace-nowrap">
+                          <Badge variant="outline" className="text-amber-600 dark:text-amber-400 text-xs whitespace-nowrap">
                             Pendente
                           </Badge>
                         )}

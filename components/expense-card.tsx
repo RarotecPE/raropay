@@ -590,7 +590,7 @@ export function ExpenseCard({
             )}
             {expense.is_irregular_route && (
               <div className="col-span-2 md:col-span-4">
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
                   Percurso Irregular
                 </Badge>
               </div>
@@ -833,7 +833,7 @@ export function ExpenseCard({
                   </Badge>
                 )}
                 {expense.status === 'approved' && expense.expense_type === 'reimbursement' && !expense.paid && (
-                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-600">
+                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-600 dark:border-amber-700/60 dark:text-amber-400">
                     Aguardando Pagamento
                   </Badge>
                 )}
@@ -849,7 +849,7 @@ export function ExpenseCard({
                 </Badge>
               )}
               {expense.exceeds_limit && (
-                <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-xs" title={expense.limit_exceeded_reason || 'Acima da referência'}>
+                <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-xs" title={expense.limit_exceeded_reason || 'Acima da referência'}>
                   <AlertTriangle className="w-3 h-3 mr-1" />
                   Acima da referência
                 </Badge>

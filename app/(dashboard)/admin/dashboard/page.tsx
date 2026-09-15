@@ -104,7 +104,7 @@ export default function AdminDashboardPage() {
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-500/10">
-                    <Send className="w-5 h-5 text-blue-600" />
+                    <Send className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
                     <p className="font-medium">Despesas prontas para envio</p>
@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-orange-500/10">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
                     <p className="font-medium">Remessas aguardando correção</p>
@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
           <Card className="cursor-pointer hover:bg-accent/50 transition-colors h-full">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="p-2 rounded-lg bg-blue-500/10">
-                <PlusCircle className="w-6 h-6 text-blue-600" />
+                <PlusCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="font-medium">Nova Despesa</p>
@@ -169,7 +169,7 @@ export default function AdminDashboardPage() {
           <Card className="cursor-pointer hover:bg-accent/50 transition-colors h-full">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="p-2 rounded-lg bg-blue-500/10">
-                <Send className="w-6 h-6 text-blue-600" />
+                <Send className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="font-medium">Enviar Prestação</p>
@@ -183,7 +183,7 @@ export default function AdminDashboardPage() {
           <Card className="cursor-pointer hover:bg-accent/50 transition-colors h-full">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="p-2 rounded-lg bg-slate-500/10">
-                <FileText className="w-6 h-6 text-slate-600" />
+                <FileText className="w-6 h-6 text-slate-600 dark:text-slate-300" />
               </div>
               <div>
                 <p className="font-medium">Minhas Remessas</p>
@@ -197,7 +197,7 @@ export default function AdminDashboardPage() {
           <Card className="cursor-pointer hover:bg-accent/50 transition-colors h-full">
             <CardContent className="flex items-center gap-4 p-4">
               <div className="p-2 rounded-lg bg-slate-500/10">
-                <History className="w-6 h-6 text-slate-600" />
+                <History className="w-6 h-6 text-slate-600 dark:text-slate-300" />
               </div>
               <div>
                 <p className="font-medium">Histórico</p>
@@ -213,13 +213,13 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Aprovado Este Mês</CardDescription>
-            <CardTitle className="text-2xl text-emerald-600">
+            <CardTitle className="text-2xl text-emerald-600 dark:text-emerald-400">
               {loading ? '...' : formatCurrency(personalStats?.totalAmount || 0)}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-sm text-muted-foreground">
-              <TrendingUp className="w-4 h-4 mr-1 text-emerald-600" />
+              <TrendingUp className="w-4 h-4 mr-1 text-emerald-600 dark:text-emerald-400" />
               {personalStats?.totalApproved || 0} despesa{(personalStats?.totalApproved || 0) !== 1 ? 's' : ''} aprovada{(personalStats?.totalApproved || 0) !== 1 ? 's' : ''}
             </div>
           </CardContent>
@@ -228,7 +228,7 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Aguardando Análise</CardDescription>
-            <CardTitle className="text-2xl text-amber-600">
+            <CardTitle className="text-2xl text-amber-600 dark:text-amber-400">
               {loading ? '...' : personalStats?.batchesPending || 0}
             </CardTitle>
           </CardHeader>
@@ -243,7 +243,7 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Prontas para Envio</CardDescription>
-            <CardTitle className="text-2xl text-blue-600">
+            <CardTitle className="text-2xl text-blue-600 dark:text-blue-400">
               {loading ? '...' : personalStats?.readyToSend || 0}
             </CardTitle>
           </CardHeader>

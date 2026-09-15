@@ -555,10 +555,10 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
 
       {/* Solicitações de Análise Existentes */}
       {analysisRequests && analysisRequests.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50/30">
+        <Card className="border-blue-500/25 bg-blue-500/5 dark:border-blue-500/30 dark:bg-blue-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               Solicitações de Análise
               <Badge variant="outline" className="ml-auto">
                 {analysisRequests.length}
@@ -570,8 +570,8 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
               {analysisRequests.map((req: { id: number; subject: string; status: string; employee_name: string; created_at: string; unread_count: number }) => (
                 <div
                   key={req.id}
-                  className={`flex items-center justify-between p-3 rounded-lg bg-white cursor-pointer hover:bg-blue-50 ${
-                    req.unread_count > 0 ? 'border-2 border-red-300' : 'border'
+                  className={`flex items-center justify-between p-3 rounded-lg bg-card cursor-pointer hover:bg-muted/50 ${
+                    req.unread_count > 0 ? 'border-2 border-red-300 dark:border-red-800' : 'border border-border'
                   }`}
                   onClick={() => router.push(`/card-invoices/analysis/${req.id}`)}
                 >
@@ -590,9 +590,9 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={
-                      req.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                      req.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      'bg-green-50 text-green-700 border-green-200'
+                      req.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50' :
+                      req.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50' :
+                      'bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50'
                     }>
                       {req.status === 'pending' ? 'Pendente' : 
                        req.status === 'in_progress' ? 'Em Andamento' : 'Resolvida'}
@@ -607,13 +607,13 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
       )}
 
       {invoice.notes && (
-        <Card className="bg-amber-50 border-amber-200">
+        <Card className="bg-amber-50/70 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/50">
           <CardContent className="pt-4">
             <div className="flex gap-3">
-              <FileText className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
+              <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-900 dark:text-amber-200">
                 <p className="font-medium">Observações</p>
-                <p className="mt-1">{invoice.notes}</p>
+                <p className="mt-1 text-amber-800/90 dark:text-amber-300/90">{invoice.notes}</p>
               </div>
             </div>
           </CardContent>
@@ -625,8 +625,8 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <Package className="w-5 h-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950/50">
+                <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total de Despesas</p>
@@ -640,12 +640,12 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-emerald-950/50">
+                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Aprovadas</p>
-                <p className="text-2xl font-bold text-green-600">{displayStats.approved_count}</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-emerald-400">{displayStats.approved_count}</p>
                 <p className="text-sm text-muted-foreground">{formatCurrency(Number(displayStats.approved_amount))}</p>
               </div>
             </div>
@@ -655,12 +655,12 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-100">
-                <Clock className="w-5 h-5 text-amber-600" />
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950/50">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Em Análise</p>
-                <p className="text-2xl font-bold text-amber-600">{displayStats.pending_count}</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{displayStats.pending_count}</p>
                 <p className="text-sm text-muted-foreground">{formatCurrency(Number(displayStats.pending_amount))}</p>
               </div>
             </div>
@@ -670,12 +670,12 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-100">
-                <XCircle className="w-5 h-5 text-red-600" />
+              <div className="p-2 rounded-lg bg-red-100 dark:bg-red-950/50">
+                <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Rejeitadas</p>
-                <p className="text-2xl font-bold text-red-600">{displayStats.rejected_count}</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{displayStats.rejected_count}</p>
                 <p className="text-sm text-muted-foreground">{formatCurrency(Number(displayStats.rejected_amount))}</p>
               </div>
             </div>

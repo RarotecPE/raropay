@@ -209,13 +209,13 @@ export default function BatchHistoryPage() {
   function getStatusBadge(status: string) {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary" className="bg-amber-100 text-amber-800">Em Análise</Badge>
+        return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/50">Em Análise</Badge>
       case 'approved':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Aprovada</Badge>
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border dark:border-emerald-800/50">Aprovada</Badge>
       case 'rejected':
         return <Badge variant="destructive">Rejeitada</Badge>
       case 'correction':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Correção Solicitada</Badge>
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 dark:border dark:border-orange-800/50">Correção Solicitada</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -255,11 +255,11 @@ export default function BatchHistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <Clock className="w-4 h-4 text-amber-600" />
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Em Análise</p>
-                <p className="text-xl font-bold text-amber-600">{totals.pending}</p>
+                <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{totals.pending}</p>
               </div>
             </div>
           </CardContent>
@@ -273,11 +273,11 @@ export default function BatchHistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <Edit3 className="w-4 h-4 text-orange-600" />
+                <Edit3 className="w-4 h-4 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Correção</p>
-                <p className="text-xl font-bold text-orange-600">{totals.correction}</p>
+                <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{totals.correction}</p>
               </div>
             </div>
           </CardContent>
@@ -291,11 +291,11 @@ export default function BatchHistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Aprovadas</p>
-                <p className="text-xl font-bold text-emerald-600">{totals.approved}</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{totals.approved}</p>
               </div>
             </div>
           </CardContent>
@@ -309,11 +309,11 @@ export default function BatchHistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <XCircle className="w-4 h-4 text-red-600" />
+                <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Rejeitadas</p>
-                <p className="text-xl font-bold text-red-600">{totals.rejected}</p>
+                <p className="text-xl font-bold text-red-600 dark:text-red-400">{totals.rejected}</p>
               </div>
             </div>
           </CardContent>

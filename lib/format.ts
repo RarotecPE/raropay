@@ -227,7 +227,7 @@ export function getStatusBadge(status: string) {
   if (isApproved) {
     className = "bg-success text-success-foreground"
   } else if (isCorrection) {
-    className = "bg-orange-100 text-orange-800 border-orange-200"
+    className = "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800"
   }
   
   return React.createElement(Badge, {

@@ -449,14 +449,14 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
       </Card>
 
       {/* Despesas Vinculadas para Revisão */}
-      <Card className="border-amber-200 bg-amber-50/30">
+      <Card className="border-amber-500/25 bg-amber-500/5 dark:border-amber-500/30 dark:bg-amber-950/20">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               Despesas para Revisão
               {linkedExpenses.length > 0 && (
-                <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-300">
+                <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50">
                   {linkedExpenses.length}
                 </Badge>
               )}
@@ -487,8 +487,8 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
               {linkedExpenses.map(expense => (
                 <div 
                   key={expense.id}
-                  className={`p-3 rounded-lg border bg-white ${
-                    expense.edited_at ? 'border-green-300' : 'border-amber-200'
+                  className={`p-3 rounded-lg border bg-card ${
+                    expense.edited_at ? 'border-green-300 dark:border-green-800' : 'border-amber-200 dark:border-amber-800'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">
@@ -496,7 +496,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium truncate">{expense.description}</span>
                         {expense.edited_at && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                          <Badge variant="outline" className="bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 text-xs">
                             Editada
                           </Badge>
                         )}
@@ -515,12 +515,12 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
                         </span>
                       </div>
                       {expense.reason && (
-                        <p className="mt-1 text-sm text-amber-700">
+                        <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
                           <strong>Motivo:</strong> {expense.reason}
                         </p>
                       )}
                       {expense.edit_notes && (
-                        <p className="mt-1 text-sm text-green-700">
+                        <p className="mt-1 text-sm text-green-700 dark:text-emerald-300">
                           <strong>Alterações:</strong> {expense.edit_notes}
                         </p>
                       )}
@@ -690,7 +690,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
 
           {request.status === 'resolved' && (
             <div className="border-t pt-4">
-              <div className="flex items-center gap-2 text-green-600 bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 text-green-600 dark:text-emerald-400 bg-green-50 dark:bg-emerald-950/30 p-4 rounded-lg">
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Esta solicitação foi marcada como resolvida em {formatDateTime(request.resolved_at || '')}</span>
               </div>
@@ -727,7 +727,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
                     <div 
                       key={expense.id}
                       className={`p-3 border-b last:border-b-0 cursor-pointer transition-colors ${
-                        isSelected ? 'bg-blue-50' : 'hover:bg-muted/50'
+                        isSelected ? 'bg-blue-50 dark:bg-blue-950/40' : 'hover:bg-muted/50'
                       }`}
                       onClick={() => toggleExpenseToAdd(expense.id)}
                     >
@@ -767,7 +767,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
             )}
 
             {selectedExpensesToAdd.length > 0 && (
-              <p className="text-sm text-blue-600">
+              <p className="text-sm text-blue-600 dark:text-blue-400">
                 {selectedExpensesToAdd.length} despesa(s) selecionada(s)
               </p>
             )}

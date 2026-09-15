@@ -350,11 +350,11 @@ export default function ProcessedExpensesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Wallet className="w-5 h-5 text-blue-600" />
+                <Wallet className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Valor Total</p>
-                <p className="text-xl font-bold text-blue-600">{formatCurrency(totalAmount)}</p>
+                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -365,11 +365,11 @@ export default function ProcessedExpensesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Selecionadas</p>
-                <p className="text-xl font-bold text-emerald-600">{selectedIds.size}</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{selectedIds.size}</p>
               </div>
             </div>
           </CardContent>
@@ -380,11 +380,11 @@ export default function ProcessedExpensesPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                <Send className="w-5 h-5 text-emerald-600" />
+                <Send className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Valor Selecionado</p>
-                <p className="text-xl font-bold text-emerald-600">{formatCurrency(selectedTotal)}</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(selectedTotal)}</p>
               </div>
             </div>
           </CardContent>
@@ -565,19 +565,19 @@ export default function ProcessedExpensesPage() {
               <div className="grid gap-3 sm:grid-cols-3">
                 {expenseAnalysis.hasCartao && (
                   <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-blue-600" />
+                    <CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span className="text-sm">Cartão Corporativo</span>
                   </div>
                 )}
                 {expenseAnalysis.hasAdiantamento && (
                   <div className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-amber-600" />
+                    <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <span className="text-sm">Adiantamento</span>
                   </div>
                 )}
                 {expenseAnalysis.hasReembolso && (
                   <div className="flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-green-600" />
+                    <Receipt className="w-4 h-4 text-green-600 dark:text-emerald-400" />
                     <span className="text-sm">Reembolso</span>
                   </div>
                 )}
@@ -596,7 +596,7 @@ export default function ProcessedExpensesPage() {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="positivo" id="saldo-positivo" />
                       <Label htmlFor="saldo-positivo" className="cursor-pointer">
-                        <span className="font-medium text-green-600">Saldo Positivo</span>
+                        <span className="font-medium text-green-600 dark:text-emerald-400">Saldo Positivo</span>
                         <span className="text-sm text-muted-foreground ml-2">
                           (sobrou dinheiro do adiantamento)
                         </span>
@@ -614,7 +614,7 @@ export default function ProcessedExpensesPage() {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="negativo" id="saldo-negativo" />
                       <Label htmlFor="saldo-negativo" className="cursor-pointer">
-                        <span className="font-medium text-red-600">Saldo Negativo</span>
+                        <span className="font-medium text-red-600 dark:text-red-400">Saldo Negativo</span>
                         <span className="text-sm text-muted-foreground ml-2">
                           (precisei usar recurso próprio)
                         </span>
@@ -641,9 +641,9 @@ export default function ProcessedExpensesPage() {
 
             {/* Dados do adiantamento - só aparece se tem adiantamento vinculado */}
             {expenseAnalysis.hasAdiantamento && (
-              <div className="p-4 border rounded-lg space-y-4 bg-amber-50/50 border-amber-200">
+              <div className="p-4 border rounded-lg space-y-4 bg-amber-50/50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/40">
                 <h4 className="font-medium flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-amber-600" />
+                  <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   Dados do Adiantamento Recebido
                 </h4>
                 
@@ -669,7 +669,7 @@ export default function ProcessedExpensesPage() {
 
                 <Field>
                   <FieldLabel className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     As despesas ultrapassaram o valor do adiantamento?
                   </FieldLabel>
                   <RadioGroup 
@@ -689,7 +689,7 @@ export default function ProcessedExpensesPage() {
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="sim" id="advance-yes" />
                       <Label htmlFor="advance-yes" className="cursor-pointer">
-                        <span className="font-medium text-amber-600">Sim</span>
+                        <span className="font-medium text-amber-600 dark:text-amber-400">Sim</span>
                         <span className="text-sm text-muted-foreground ml-2">
                           (precisei usar recurso próprio além do adiantamento)
                         </span>
@@ -704,9 +704,9 @@ export default function ProcessedExpensesPage() {
                 1. Tem apenas reembolso (sem adiantamento), OU
                 2. Tem adiantamento e o usuário indicou que excedeu */}
             {showPaymentFields && (
-              <div className="p-4 border rounded-lg space-y-4 bg-blue-50/50 border-blue-200">
+              <div className="p-4 border rounded-lg space-y-4 bg-blue-50/50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/40">
                 <h4 className="font-medium flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-blue-600" />
+                  <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Dados para Reembolso (opcional)
                 </h4>
                 <p className="text-sm text-muted-foreground">
@@ -745,9 +745,9 @@ export default function ProcessedExpensesPage() {
             </Field>
 
             {/* Aviso */}
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-sm text-amber-800">
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-lg flex gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800 dark:text-amber-200">
                 <p className="font-medium">Atenção</p>
                 <p>Após o envio, as despesas ficarão bloqueadas para edição até que a equipe financeira analise a prestação de contas.</p>
               </div>

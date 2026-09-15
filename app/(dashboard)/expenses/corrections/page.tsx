@@ -262,11 +262,11 @@ export default function CorrectionsPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Clock className="w-5 h-5 text-blue-600" />
+                <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Valor Total</p>
-                <p className="text-xl font-bold text-blue-600">{formatCurrency(totalAmount)}</p>
+                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -277,11 +277,11 @@ export default function CorrectionsPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${selectedExpenses.size > 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-muted'}`}>
-                <CheckSquare className={`w-5 h-5 ${selectedExpenses.size > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                <CheckSquare className={`w-5 h-5 ${selectedExpenses.size > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Selecionadas</p>
-                <p className="text-xl font-bold text-emerald-600">{selectedExpenses.size}</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{selectedExpenses.size}</p>
               </div>
             </div>
           </CardContent>
@@ -292,11 +292,11 @@ export default function CorrectionsPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${selectedExpenses.size > 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-muted'}`}>
-                <Send className={`w-5 h-5 ${selectedExpenses.size > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                <Send className={`w-5 h-5 ${selectedExpenses.size > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Valor Selecionado</p>
-                <p className="text-xl font-bold text-emerald-600">{formatCurrency(selectedAmount)}</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(selectedAmount)}</p>
               </div>
             </div>
           </CardContent>

@@ -284,11 +284,11 @@ export default function HistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <Clock className="w-4 h-4 text-amber-600" />
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Em Análise</p>
-                <p className="text-xl font-bold text-amber-600">{stats.pending}</p>
+                <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{stats.pending}</p>
               </div>
             </div>
           </CardContent>
@@ -302,11 +302,11 @@ export default function HistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Aprovadas</p>
-                <p className="text-xl font-bold text-emerald-600">{stats.approved}</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{stats.approved}</p>
               </div>
             </div>
           </CardContent>
@@ -320,11 +320,11 @@ export default function HistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-orange-600" />
+                <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Correção</p>
-                <p className="text-xl font-bold text-orange-600">{stats.correction}</p>
+                <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{stats.correction}</p>
               </div>
             </div>
           </CardContent>
@@ -338,11 +338,11 @@ export default function HistoryPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <XCircle className="w-4 h-4 text-red-600" />
+                <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Rejeitadas</p>
-                <p className="text-xl font-bold text-red-600">{stats.rejected}</p>
+                <p className="text-xl font-bold text-red-600 dark:text-red-400">{stats.rejected}</p>
               </div>
             </div>
           </CardContent>
@@ -356,7 +356,7 @@ export default function HistoryPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Resumo das Suas Despesas</p>
@@ -365,7 +365,7 @@ export default function HistoryPage() {
               </div>
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2 p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <div>
                     <p className="text-xs text-muted-foreground">Aprovadas</p>
                     <p className="font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(stats.approvedAmount)}</p>
@@ -373,7 +373,7 @@ export default function HistoryPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
-                  <Clock className="w-4 h-4 text-amber-600" />
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <div>
                     <p className="text-xs text-muted-foreground">Em Análise</p>
                     <p className="font-semibold text-amber-700 dark:text-amber-400">{formatCurrency(stats.pendingAmount)}</p>

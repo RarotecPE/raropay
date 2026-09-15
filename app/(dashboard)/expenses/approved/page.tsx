@@ -558,12 +558,12 @@ export default function ApprovedExpensesPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <Wallet className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-green-100 dark:bg-emerald-950/40 rounded-lg">
+                <Wallet className="w-5 h-5 text-green-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Valor Total (Remessas)</p>
-                <p className="text-xl font-bold text-green-600">{formatCurrency(batchesTotalAmount)}</p>
+                <p className="text-xl font-bold text-green-600 dark:text-emerald-400">{formatCurrency(batchesTotalAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -774,10 +774,10 @@ export default function ApprovedExpensesPage() {
                             className="flex items-start sm:items-center gap-2 sm:gap-4 cursor-pointer min-w-0 flex-1"
                             onClick={() => toggleBatchExpand(batch.id)}
                           >
-                            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg shrink-0">
+                            <div className="p-2 bg-green-100 dark:bg-emerald-950/40 rounded-lg shrink-0">
                               {expandedBatches.has(batch.id) 
-                                ? <ChevronDown className="w-5 h-5 text-green-600" />
-                                : <ChevronRight className="w-5 h-5 text-green-600" />
+                                ? <ChevronDown className="w-5 h-5 text-green-600 dark:text-emerald-400" />
+                                : <ChevronRight className="w-5 h-5 text-green-600 dark:text-emerald-400" />
                               }
                             </div>
                             <div className="min-w-0 flex-1">
@@ -806,7 +806,7 @@ export default function ApprovedExpensesPage() {
                           <div className="text-right shrink-0">
                             <p className="text-lg sm:text-2xl font-bold whitespace-nowrap">{formatCurrency(Number(batch.total_amount))}</p>
                             <div className="flex flex-col items-end gap-1 mt-1">
-                              <Badge className="bg-green-100 text-green-800 text-xs">
+                              <Badge className="bg-green-100 text-green-800 dark:bg-emerald-950/50 dark:text-emerald-300 text-xs">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
                                 Aprovada
                               </Badge>
@@ -820,13 +820,13 @@ export default function ApprovedExpensesPage() {
                                     </Badge>
                                   )}
                                   {paymentStatus === 'partial' && (
-                                    <Badge className="bg-amber-100 text-amber-800 text-xs">
+                                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 text-xs">
                                       <Clock className="w-3 h-3 mr-1" />
                                       Pagamento Parcial
                                     </Badge>
                                   )}
                                   {paymentStatus === 'unpaid' && (
-                                    <Badge variant="outline" className="border-amber-300 text-amber-600 text-xs">
+                                    <Badge variant="outline" className="border-amber-300 text-amber-600 dark:border-amber-700/60 dark:text-amber-400 text-xs">
                                       <Clock className="w-3 h-3 mr-1" />
                                       Aguardando
                                     </Badge>
@@ -946,7 +946,7 @@ export default function ApprovedExpensesPage() {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
+                                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200 dark:text-amber-400 dark:hover:text-amber-300 dark:hover:bg-amber-950/40 dark:border-amber-800/60"
                                         onClick={(e) => {
                                           e.stopPropagation()
                                           openUnapproveDialog(expense)
@@ -959,8 +959,8 @@ export default function ApprovedExpensesPage() {
                                   )}
                                   {/* Indicador de despesa já em correção */}
                                   {expense.status === 'correction' && (
-                                    <div className="flex justify-end px-4 pb-3 bg-amber-50">
-                                      <span className="text-xs text-amber-600 font-medium">
+                                    <div className="flex justify-end px-4 pb-3 bg-amber-50/50 dark:bg-amber-950/30">
+                                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                                         Em correção
                                       </span>
                                     </div>
@@ -1187,7 +1187,7 @@ export default function ApprovedExpensesPage() {
                 {expense.expense_type === 'reimbursement' && (
                   <div>
                     {expense.paid ? (
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      <Badge className="bg-green-100 text-green-800 dark:bg-emerald-950/50 dark:text-emerald-300">
                         <Banknote className="w-3 h-3 mr-1" />
                         Pago
                         {expense.paid_at && (
@@ -1197,7 +1197,7 @@ export default function ApprovedExpensesPage() {
                         )}
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
                         <Clock className="w-3 h-3 mr-1" />
                         Pagamento Pendente
                       </Badge>
@@ -1217,7 +1217,7 @@ export default function ApprovedExpensesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
+                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200 dark:text-amber-400 dark:hover:text-amber-300 dark:hover:bg-amber-950/40 dark:border-amber-800/60"
                     onClick={() => openUnapproveDialog(expense)}
                   >
                     <Undo2 className="w-4 h-4 mr-1" />

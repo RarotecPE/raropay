@@ -117,11 +117,11 @@ export function MealVoucherManagementCard() {
               <TrendingUp className="h-3 w-3" />
               Utilizado
             </div>
-            <p className="text-xl font-bold text-orange-600">{formatCurrency(data.currentMonth.totalUsed)}</p>
+            <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{formatCurrency(data.currentMonth.totalUsed)}</p>
           </div>
           <div>
             <div className="text-muted-foreground text-xs mb-1">Disponível</div>
-            <p className="text-xl font-bold text-emerald-600">{formatCurrency(data.currentMonth.totalAvailable)}</p>
+            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(data.currentMonth.totalAvailable)}</p>
           </div>
         </div>
 
@@ -150,15 +150,15 @@ export function MealVoucherManagementCard() {
               <div key={user.id} className="flex items-center justify-between text-sm">
                 <span className="truncate flex-1">{user.name}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-orange-600 font-mono text-xs">{formatCurrency(user.used)}</span>
+                  <span className="text-orange-600 dark:text-orange-400 font-mono text-xs">{formatCurrency(user.used)}</span>
                   {user.utilizationRate > 90 && (
                     <AlertTriangle className="h-3 w-3 text-red-500" />
                   )}
                   <Badge 
                     variant="outline" 
                     className={`text-xs ${
-                      user.utilizationRate > 90 ? 'border-red-500 text-red-600' : 
-                      user.utilizationRate > 75 ? 'border-amber-500 text-amber-600' : 
+                      user.utilizationRate > 90 ? 'border-red-500 text-red-600 dark:text-red-400 dark:border-red-500/50' : 
+                      user.utilizationRate > 75 ? 'border-amber-500 text-amber-600 dark:text-amber-400 dark:border-amber-500/50' : 
                       'border-muted'
                     }`}
                   >

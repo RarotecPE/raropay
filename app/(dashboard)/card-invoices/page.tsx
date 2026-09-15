@@ -222,13 +222,13 @@ export default function CardInvoicesPage() {
   }
 
   const getDueDateStatus = (dueDate: string) => {
-    if (!dueDate) return { label: "Sem vencimento", color: "bg-gray-100 text-gray-800" }
+    if (!dueDate) return { label: "Sem vencimento", color: "bg-gray-100 text-gray-800 dark:bg-gray-800/70 dark:text-gray-200" }
     
     // Handle both YYYY-MM-DD and full ISO date strings
     const dateOnly = dueDate.split('T')[0]
     const due = new Date(dateOnly + 'T12:00:00')
     
-    if (isNaN(due.getTime())) return { label: "Data inválida", color: "bg-gray-100 text-gray-800" }
+    if (isNaN(due.getTime())) return { label: "Data inválida", color: "bg-gray-100 text-gray-800 dark:bg-gray-800/70 dark:text-gray-200" }
     
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -236,9 +236,9 @@ export default function CardInvoicesPage() {
     const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     
     if (diffDays < 0) {
-      return { label: "Vencimento Encerrado", color: "bg-red-100 text-red-800" }
+      return { label: "Vencimento Encerrado", color: "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300" }
     } else {
-      return { label: "Vencimento em dia", color: "bg-green-100 text-green-800" }
+      return { label: "Vencimento em dia", color: "bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300" }
     }
   }
 
@@ -391,13 +391,13 @@ export default function CardInvoicesPage() {
       </div>
 
       {/* Info Card */}
-      <Card className="bg-blue-50 border-blue-200">
+      <Card className="bg-blue-50/70 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/50">
         <CardContent className="pt-4">
           <div className="flex gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800">
+            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-900 dark:text-blue-200">
               <p className="font-medium">Como funciona?</p>
-              <p className="mt-1">
+              <p className="mt-1 text-blue-800/90 dark:text-blue-300/90">
                 Cadastre os períodos de cada fatura do cartão corporativo. O sistema irá cruzar automaticamente 
                 as despesas registradas com a data de início e fechamento informadas, permitindo verificar se 
                 os valores batem com a fatura do banco.

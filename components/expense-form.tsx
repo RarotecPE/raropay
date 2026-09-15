@@ -2318,7 +2318,7 @@ is_capital: locationType === 'capital',
                         const valorPorPessoa = exp.value / totalPessoas
                         if (valorPorPessoa > limit) {
                           return (
-                            <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                            <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200 text-sm">
                               <AlertTriangle className="w-4 h-4 shrink-0" />
                               <span>
                                 Valor por pessoa ({formatCurrency(valorPorPessoa)}) acima da referência de {formatCurrency(limit)} para {mealTypeLabels[exp.mealType]}
@@ -2357,13 +2357,13 @@ is_capital: locationType === 'capital',
                       
                       if (expectedOtherPersons > 0 && missing > 0) {
                         return (
-                          <p className="text-xs text-amber-600 mt-1">
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                             Vincule mais {missing} pessoa{missing > 1 ? 's' : ''} ({linkedCount}/{expectedOtherPersons} vinculadas)
                           </p>
                         )
                       } else if (expectedOtherPersons > 0) {
                         return (
-                          <p className="text-xs text-green-600 mt-1">
+                          <p className="text-xs text-green-600 dark:text-emerald-400 mt-1">
                             {linkedCount}/{expectedOtherPersons} pessoa{expectedOtherPersons > 1 ? 's' : ''} vinculada{expectedOtherPersons > 1 ? 's' : ''}
                           </p>
                         )
@@ -2891,7 +2891,7 @@ Referência por pessoa: {formatCurrency(
                         <Navigation className="w-4 h-4" />
                         {routeSource === 'osrm' ? `${estimatedDistance} km` : `~${estimatedDistance} km`}
                         {routeSource === 'osrm' ? (
-                          <span className="text-xs text-green-600 font-medium">(Rota Offline)</span>
+                          <span className="text-xs text-green-600 dark:text-emerald-400 font-medium">(Rota Offline)</span>
                         ) : (
                           <span className="text-xs">(estimativa)</span>
                         )}
@@ -2933,7 +2933,7 @@ Referência por pessoa: {formatCurrency(
 
 {/* Alerta de diferença de KM - tolerância de 30% */}
               {estimatedDistance && totalKm && Math.abs(parseFloat(totalKm) - estimatedDistance) > estimatedDistance * 0.3 && (
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200 text-sm">
                   <AlertTriangle className="w-4 h-4 inline mr-2" />
                   Diferença acima de 30% entre KM informado ({totalKm}) e estimativa ({estimatedDistance}km). 
                   Considere marcar como percurso irregular se houver desvios.
@@ -3034,9 +3034,9 @@ Referência por pessoa: {formatCurrency(
                     </div>
                   )}
                   {fuelKmPerLiter && (
-                    <div className={`p-3 rounded-lg ${fuelKmPerLiter >= dynamicLimits.fuel_min_km_per_liter ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <div className={`p-3 rounded-lg ${fuelKmPerLiter >= dynamicLimits.fuel_min_km_per_liter ? 'bg-green-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
                       <span className="text-sm">Consumo:</span>
-                      <span className={`ml-2 font-medium ${fuelKmPerLiter >= dynamicLimits.fuel_min_km_per_liter ? 'text-green-700' : 'text-red-700'}`}>
+                      <span className={`ml-2 font-medium ${fuelKmPerLiter >= dynamicLimits.fuel_min_km_per_liter ? 'text-green-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
                         {fuelKmPerLiter.toFixed(2)} KM/L
                       </span>
                     </div>
@@ -3045,7 +3045,7 @@ Referência por pessoa: {formatCurrency(
               )}
 
               {fuelKmPerLiter !== null && fuelKmPerLiter < dynamicLimits.fuel_min_km_per_liter && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:border-red-800 dark:text-red-200 text-sm">
                   <AlertTriangle className="w-4 h-4 inline mr-2" />
                   Consumo abaixo do mínimo de {dynamicLimits.fuel_min_km_per_liter} KM/L. Justifique nas observações.
                 </div>
@@ -3452,7 +3452,7 @@ Referência por pessoa: {formatCurrency(
                       <Navigation className="w-4 h-4" />
                       {transportRouteSource === 'osrm' ? `${transportRouteDistance} km` : `~${transportRouteDistance} km`}
                       {transportRouteSource === 'osrm' ? (
-                        <span className="text-xs text-green-600 font-medium">(Rota Offline)</span>
+                        <span className="text-xs text-green-600 dark:text-emerald-400 font-medium">(Rota Offline)</span>
                       ) : (
                         <span className="text-xs">(estimativa)</span>
                       )}
@@ -3528,7 +3528,7 @@ Referência por pessoa: {formatCurrency(
                       <span>Disponível: <strong className="text-foreground">{formatCurrency(available)}</strong></span>
                     </div>
                     {exceeded && (
-                      <div className="flex items-start gap-2 text-xs sm:text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                      <div className="flex items-start gap-2 text-xs sm:text-sm text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-md p-2">
                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                         <span>Este valor excede o limite disponível de {formatCurrency(available)}.</span>
                       </div>

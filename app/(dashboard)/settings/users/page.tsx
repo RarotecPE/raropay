@@ -53,10 +53,10 @@ const roleLabels: Record<string, string> = {
 }
 
 const roleBadgeColors: Record<string, string> = {
-  admin: "bg-red-100 text-red-800 border-red-200",
-  manager: "bg-purple-100 text-purple-800 border-purple-200",
-  financial: "bg-blue-100 text-blue-800 border-blue-200",
-  employee: "bg-gray-100 text-gray-800 border-gray-200"
+  admin: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
+  manager: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800",
+  financial: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
+  employee: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700"
 }
 
 export default function UsersPage() {
@@ -533,11 +533,11 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>
                         {user.is_active ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800">
                             Ativo
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800/60 dark:text-gray-300 dark:border-gray-700">
                             Inativo
                           </Badge>
                         )}

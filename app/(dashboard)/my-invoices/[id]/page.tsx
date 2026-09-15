@@ -119,11 +119,11 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
-        return <Badge className="bg-green-100 text-green-800">Aprovada</Badge>
+        return <Badge className="bg-green-100 text-green-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border dark:border-emerald-800/50">Aprovada</Badge>
       case 'pending':
-        return <Badge className="bg-amber-100 text-amber-800">Em Análise</Badge>
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/50">Em Análise</Badge>
       case 'rejected':
-        return <Badge className="bg-red-100 text-red-800">Rejeitada</Badge>
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 dark:border dark:border-red-800/50">Rejeitada</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -169,24 +169,24 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Alerta de Solicitações Pendentes */}
       {pendingRequests.length > 0 && (
-        <Card className="border-amber-300 bg-amber-50/50">
+        <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30">
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-amber-800">
+                <h3 className="font-semibold text-amber-800 dark:text-amber-200">
                   {pendingRequests.length} Solicitação(ões) de Análise Pendente(s)
                 </h3>
-                <p className="text-sm text-amber-700 mb-3">
+                <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
                   O financeiro solicitou sua análise para esta fatura. Por favor, verifique e responda.
                 </p>
                 <div className="space-y-2">
                   {pendingRequests.map((req) => (
                     <div
                       key={req.id}
-                      className="flex items-center justify-between p-3 bg-white rounded-lg cursor-pointer hover:bg-amber-50"
+                      className="flex items-center justify-between p-3 bg-card border border-border rounded-lg cursor-pointer hover:bg-muted/50"
                       onClick={() => router.push(`/my-invoices/analysis/${req.id}`)}
                     >
                       <div>
@@ -232,12 +232,12 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              <div className="p-3 bg-green-100 dark:bg-emerald-950/50 rounded-lg">
+                <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-emerald-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Aprovadas</p>
-                <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-emerald-400">{stats.approved}</p>
                 <p className="text-sm text-muted-foreground">{formatCurrency(stats.approvedAmount)}</p>
               </div>
             </div>
@@ -247,12 +247,12 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-amber-100 rounded-lg">
-                <Clock className="w-6 h-6 text-amber-600" />
+              <div className="p-3 bg-amber-100 dark:bg-amber-950/50 rounded-lg">
+                <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Em Análise</p>
-                <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.pending}</p>
                 <p className="text-sm text-muted-foreground">{formatCurrency(stats.pendingAmount)}</p>
               </div>
             </div>
@@ -262,12 +262,12 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-red-100 rounded-lg">
-                <XCircle className="w-6 h-6 text-red-600" />
+              <div className="p-3 bg-red-100 dark:bg-red-950/50 rounded-lg">
+                <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Rejeitadas</p>
-                <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.rejected}</p>
                 <p className="text-sm text-muted-foreground">{formatCurrency(stats.rejectedAmount)}</p>
               </div>
             </div>

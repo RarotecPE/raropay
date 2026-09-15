@@ -9,10 +9,10 @@ export const ADVANCE_STATUS_LABELS: Record<string, string> = {
 
 // Classes de cor (tokens semânticos) para os badges de status
 export const ADVANCE_STATUS_CLASSES: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-800 border-amber-200",
-  approved: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  rejected: "bg-red-100 text-red-800 border-red-200",
-  clarification: "bg-blue-100 text-blue-800 border-blue-200",
+  pending: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/60",
+  approved: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60",
+  rejected: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800/60",
+  clarification: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/60",
 }
 
 // Tipos de despesa disponíveis para o adiantamento (categorias existentes do sistema)

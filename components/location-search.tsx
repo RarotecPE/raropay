@@ -165,7 +165,7 @@ export function LocationSearch({
           disabled={disabled}
         >
           <span className="flex items-center gap-2 truncate">
-            <MapPin className={cn('h-4 w-4 shrink-0', coords ? 'text-green-600 opacity-100' : 'opacity-50')} />
+            <MapPin className={cn('h-4 w-4 shrink-0', coords ? 'text-green-600 dark:text-emerald-400 opacity-100' : 'opacity-50')} />
             {value ? (
               <span className="truncate">{value}</span>
             ) : (

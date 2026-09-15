@@ -707,15 +707,15 @@ body: JSON.stringify({
                           </p>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground mt-2">
-                          <div className="bg-white p-2 rounded border">
+                          <div className="bg-muted/50 p-2 rounded border border-border">
                             <div className="font-medium text-foreground">{storageStats.database.tables.expenses}</div>
                             <div>Despesas</div>
                           </div>
-                          <div className="bg-white p-2 rounded border">
+                          <div className="bg-muted/50 p-2 rounded border border-border">
                             <div className="font-medium text-foreground">{storageStats.database.tables.batches}</div>
                             <div>Remessas</div>
                           </div>
-                          <div className="bg-white p-2 rounded border">
+                          <div className="bg-muted/50 p-2 rounded border border-border">
                             <div className="font-medium text-foreground">{storageStats.database.tables.users}</div>
                             <div>Usuários</div>
                           </div>
@@ -742,13 +742,13 @@ body: JSON.stringify({
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-2">
-                          <div className="bg-white p-2 rounded border flex items-center gap-1">
+                          <div className="bg-muted/50 p-2 rounded border border-border flex items-center gap-1">
                             <FileText className="h-3 w-3" />
                             <span className="font-medium text-foreground">{storageStats.blob.totalFiles}</span>
                             <span>arquivos</span>
                           </div>
                           {Object.entries(storageStats.blob.filesByType).map(([type, data]) => (
-                            <div key={type} className="bg-white p-2 rounded border flex items-center gap-1">
+                            <div key={type} className="bg-muted/50 p-2 rounded border border-border flex items-center gap-1">
                               {type === 'pdf' ? <FileText className="h-3 w-3" /> : <Image className="h-3 w-3" />}
                               <span className="font-medium text-foreground">{data.count}</span>
                               <span>.{type}</span>

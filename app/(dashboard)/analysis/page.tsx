@@ -1366,8 +1366,8 @@ if (res.ok) {
 
                     {/* Dados de Pagamento (PIX/Boleto) */}
                     {batch.payment_data && (batch.payment_data.barcode || batch.payment_data.pix) && (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h4 className="font-medium flex items-center gap-2 text-blue-800 mb-3">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <h4 className="font-medium flex items-center gap-2 text-blue-800 dark:text-blue-300 mb-3">
                           <Building2 className="w-4 h-4" />
                           Dados para Reembolso
                         </h4>
@@ -1375,13 +1375,13 @@ if (res.ok) {
                           {batch.payment_data.barcode && (
                             <div>
                               <p className="text-sm text-muted-foreground">Código de Barras do Boleto</p>
-                              <p className="font-mono text-sm break-all bg-white p-2 rounded border">{batch.payment_data.barcode}</p>
+                              <p className="font-mono text-sm break-all bg-background p-2 rounded border border-border">{batch.payment_data.barcode}</p>
                             </div>
                           )}
                           {batch.payment_data.pix && (
                             <div>
                               <p className="text-sm text-muted-foreground">Chave PIX</p>
-                              <p className="font-mono text-sm bg-white p-2 rounded border">{batch.payment_data.pix}</p>
+                              <p className="font-mono text-sm bg-background p-2 rounded border border-border">{batch.payment_data.pix}</p>
                             </div>
                           )}
                         </div>

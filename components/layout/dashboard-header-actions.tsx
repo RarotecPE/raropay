@@ -9,10 +9,13 @@ import {
   Grid2X2,
   Loader2,
   LogOut,
+  Moon,
   RefreshCw,
+  Sun,
   User,
   UserCircle,
 } from "lucide-react"
+import { useTheme } from "@/components/theme-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -252,6 +255,37 @@ function AccountMenu({ user }: { user: HeaderUser }) {
   )
 }
 
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <HeaderIconButton title="Alternar tema" className="hidden sm:inline-flex opacity-70">
+        <Sun className="h-4 w-4" />
+      </HeaderIconButton>
+    )
+  }
+
+  const isDark = resolvedTheme === "dark"
+  const nextTheme = isDark ? "light" : "dark"
+  const title = isDark ? "Ativar modo claro" : "Ativar modo escuro"
+
+  return (
+    <HeaderIconButton
+      title={title}
+      className="hidden sm:inline-flex"
+      onClick={() => setTheme(nextTheme)}
+    >
+      {isDark ? <Sun className="h-4 w-4 text-white" /> : <Moon className="h-4 w-4 text-slate-700" />}
+    </HeaderIconButton>
+  )
+}
+
 export function DashboardHeaderActions({ user }: { user?: HeaderUser | null }) {
   const { user: authUser } = useAuth()
   const activeUser = user || authUser
@@ -262,6 +296,7 @@ export function DashboardHeaderActions({ user }: { user?: HeaderUser | null }) {
 
   return (
     <div className="flex shrink-0 items-center gap-2">
+      <ThemeToggle />
       <ApplicationsMenu />
       <AccountMenu user={activeUser} />
     </div>

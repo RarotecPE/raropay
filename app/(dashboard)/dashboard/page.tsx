@@ -72,12 +72,12 @@ const statusIcons: Record<string, typeof FileText> = {
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
-  processed: 'bg-blue-500/10 text-blue-600',
-  submitted: 'bg-amber-500/10 text-amber-600',
-  pending: 'bg-amber-500/10 text-amber-600',
-  approved: 'bg-emerald-500/10 text-emerald-600',
-  rejected: 'bg-red-500/10 text-red-600',
-  correction: 'bg-orange-500/10 text-orange-600',
+  processed: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  submitted: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  approved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  rejected: 'bg-red-500/10 text-red-600 dark:text-red-400',
+  correction: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
   analysis: 'bg-primary/10 text-primary',
 }
 
@@ -166,7 +166,7 @@ export default function DashboardPage() {
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-blue-500/10">
-                    <Send className="w-5 h-5 text-blue-600" />
+                    <Send className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
                     <p className="font-medium">Despesas prontas para envio</p>
@@ -190,7 +190,7 @@ export default function DashboardPage() {
               <CardContent className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-orange-500/10">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
                     <p className="font-medium">Remessas aguardando correção</p>
@@ -312,13 +312,13 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Aprovado Este Mês</CardDescription>
-            <CardTitle className="text-2xl text-emerald-600">
+            <CardTitle className="text-2xl text-emerald-600 dark:text-emerald-400">
               {loading ? '...' : formatCurrency(stats?.totalAmount || 0)}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center text-sm text-muted-foreground">
-              <TrendingUp className="w-4 h-4 mr-1 text-emerald-600" />
+              <TrendingUp className="w-4 h-4 mr-1 text-emerald-600 dark:text-emerald-400" />
               {stats?.totalApproved || 0} despesa{(stats?.totalApproved || 0) !== 1 ? 's' : ''} aprovada{(stats?.totalApproved || 0) !== 1 ? 's' : ''}
             </div>
           </CardContent>
@@ -327,7 +327,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Aguardando Análise</CardDescription>
-            <CardTitle className="text-2xl text-amber-600">
+            <CardTitle className="text-2xl text-amber-600 dark:text-amber-400">
               {loading ? '...' : stats?.batchesPending || 0}
             </CardTitle>
           </CardHeader>
@@ -342,7 +342,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Prontas para Envio</CardDescription>
-            <CardTitle className="text-2xl text-blue-600">
+            <CardTitle className="text-2xl text-blue-600 dark:text-blue-400">
               {loading ? '...' : stats?.readyToSend || 0}
             </CardTitle>
           </CardHeader>

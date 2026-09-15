@@ -2,8 +2,46 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { KeyRound } from "lucide-react"
+import { KeyRound, Moon, Sun } from "lucide-react"
 import { useBranding } from "@/hooks/use-branding"
+import { useTheme } from "@/components/theme-provider"
+
+function LoginThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <button
+        type="button"
+        className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-card/80 p-2 text-muted-foreground shadow-xs backdrop-blur transition-colors opacity-70"
+        aria-label="Alternar tema"
+      >
+        <Sun className="h-4 w-4" />
+      </button>
+    )
+  }
+
+  const isDark = resolvedTheme === "dark"
+  const nextTheme = isDark ? "light" : "dark"
+  const title = isDark ? "Ativar modo claro" : "Ativar modo escuro"
+
+  return (
+    <button
+      type="button"
+      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-card/80 p-2 text-muted-foreground shadow-xs backdrop-blur transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+      aria-label={title}
+      title={title}
+      onClick={() => setTheme(nextTheme)}
+    >
+      {isDark ? <Sun className="h-4 w-4 text-white" /> : <Moon className="h-4 w-4 text-slate-700" />}
+    </button>
+  )
+}
 
 function sanitizeNextPath(next: string | null) {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/api/")) {
@@ -112,10 +150,13 @@ function LoginContent() {
   }
 
   return (
-    <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
+    <main className="relative min-h-screen bg-background text-foreground flex items-center justify-center px-4 py-10 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
+      <LoginThemeToggle />
+
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-4">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] bg-white p-1 shadow-lg ring-1 ring-white/15">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] bg-white p-1 shadow-lg ring-1 ring-border/50">
             <img
               src={branding.logoUrl}
               alt={branding.name}
@@ -126,24 +167,24 @@ function LoginContent() {
             <h1 className="text-3xl font-bold tracking-tight">
               {branding.name === "Raropay" ? (
                 <>
-                  Raro<span className="text-blue-400">pay</span>
+                  Raro<span className="text-primary">pay</span>
                 </>
               ) : (
                 branding.name
               )}
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               Entre com sua conta RaroNexus para acessar a plataforma.
             </p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl">
+        <div className="rounded-xl border border-border bg-card/90 p-6 shadow-2xl backdrop-blur-xl">
           <button
             type="button"
             onClick={startRaroNexusLogin}
             disabled={ssoLoading || checkingNexusSession}
-            className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-3 rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
           >
             <KeyRound className="h-5 w-5" />
             {ssoLoading
@@ -161,8 +202,8 @@ function LoginContent() {
             <p
               className={`mt-4 rounded-lg border px-3 py-2 text-sm ${
                 error
-                  ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-                  : "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                  ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "border-primary/30 bg-primary/10 text-primary"
               }`}
             >
               {error || message}
@@ -178,8 +219,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="relative min-h-screen bg-slate-950 text-white flex items-center justify-center px-4 py-10">
-          <p className="text-sm text-slate-300">Carregando...</p>
+        <main className="relative min-h-screen bg-background text-foreground flex items-center justify-center px-4 py-10">
+          <p className="text-sm text-muted-foreground">Carregando...</p>
         </main>
       }
     >
