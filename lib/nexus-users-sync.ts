@@ -44,7 +44,7 @@ async function fetchAuthorizedNexusUsers() {
 
   const payload = (await response.json().catch(() => null)) as NexusAuthorizedUsersPayload | null
   if (!response.ok || !payload?.success || !Array.isArray(payload.data)) {
-    throw new Error(payload?.message || "Nao foi possivel sincronizar usuarios do RaroNexus.")
+    throw new Error(payload?.message || "Não foi possível sincronizar usuários do RaroNexus.")
   }
 
   return payload.data
@@ -63,14 +63,12 @@ export async function syncAuthorizedNexusUsers() {
       `
 
       const byNexusId = new Map<string, LocalUserRow>()
-      const byNexusEmail = new Map<string, LocalUserRow>()
       const byEmail = new Map<string, LocalUserRow>()
       const authorizedNexusIds = new Set<string>()
       const authorizedEmails = new Set<string>()
 
       for (const user of localUsers) {
         if (user.nexus_user_id) byNexusId.set(String(user.nexus_user_id).trim().toLowerCase(), user)
-        if (user.nexus_email) byNexusEmail.set(String(user.nexus_email).trim().toLowerCase(), user)
         if (user.email) byEmail.set(String(user.email).trim().toLowerCase(), user)
       }
 
@@ -85,10 +83,7 @@ export async function syncAuthorizedNexusUsers() {
         authorizedEmails.add(email)
 
         const name = (nexusUser.nome || email).trim()
-        const existing =
-          byNexusId.get(nexusUserId.toLowerCase()) ||
-          byNexusEmail.get(email) ||
-          byEmail.get(email)
+        const existing = byNexusId.get(nexusUserId.toLowerCase()) || byEmail.get(email)
 
         if (existing) {
           const needsUpdate =
@@ -123,11 +118,10 @@ export async function syncAuthorizedNexusUsers() {
       const idsToInactivate = localUsers
         .filter((localUser) => {
           const nexusUserId = localUser.nexus_user_id ? String(localUser.nexus_user_id).trim() : ""
-          const nexusEmail = localUser.nexus_email ? String(localUser.nexus_email).trim().toLowerCase() : ""
           const email = localUser.email ? String(localUser.email).trim().toLowerCase() : ""
           const isAuthorized = nexusUserId
             ? authorizedNexusIds.has(nexusUserId)
-            : Boolean((nexusEmail && authorizedEmails.has(nexusEmail)) || (!nexusEmail && email && authorizedEmails.has(email)))
+            : Boolean(email && authorizedEmails.has(email))
 
           return !isAuthorized && localUser.active !== false
         })

@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -70,7 +70,6 @@ export default function UsersPage() {
 
   const [formName, setFormName] = useState("")
   const [formEmail, setFormEmail] = useState("")
-  const [formNexusEmail, setFormNexusEmail] = useState("")
   const [formPhone, setFormPhone] = useState("")
   const [formDepartment, setFormDepartment] = useState("")
   const [formRole, setFormRole] = useState("employee")
@@ -106,7 +105,6 @@ export default function UsersPage() {
   function resetForm() {
     setFormName("")
     setFormEmail("")
-    setFormNexusEmail("")
     setFormPhone("")
     setFormDepartment("")
     setFormRole("employee")
@@ -121,7 +119,6 @@ export default function UsersPage() {
     setEditingUser(user)
     setFormName(user.name)
     setFormEmail(user.email)
-    setFormNexusEmail(user.nexus_email || "")
     setFormPhone(user.phone || "")
     setFormDepartment(user.department || "")
     setFormRole(user.role)
@@ -139,7 +136,6 @@ export default function UsersPage() {
       setProcessing(true)
 
       const payload = {
-        nexus_email: formNexusEmail || null,
         phone: formPhone || null,
         department: formDepartment || null,
         meal_voucher_enabled: formMealVoucherEnabled,
@@ -217,19 +213,6 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input id="email" type="email" value={formEmail} readOnly disabled />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nexus_email">E-mail do RaroNexus</Label>
-                <Input
-                  id="nexus_email"
-                  type="email"
-                  placeholder="email cadastrado no RaroNexus"
-                  value={formNexusEmail}
-                  onChange={(e) => setFormNexusEmail(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Se o e-mail for igual ao cadastrado no RaroNexus, deixe em branco.
-                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -384,7 +367,7 @@ export default function UsersPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, email ou departamento..."
+                placeholder="Buscar por nome, e-mail ou departamento..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"

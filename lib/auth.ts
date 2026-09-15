@@ -7,6 +7,7 @@ import { sql, type UserRole } from "./db"
 export const SESSION_COOKIE = "raropay_global_session"
 export const SSO_STATE_COOKIE = "raropay_sso_state"
 export const SSO_NEXT_COOKIE = "raropay_sso_next"
+export const PERSISTENT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 365 * 10
 
 export const SENTINEL_PASSWORD_HASH = "raronexus-auth-only"
 
@@ -115,7 +116,7 @@ export function mapRaroNexusRole(role: string | null | undefined): UserRole | nu
   return roleAliases[role.trim().toLowerCase()] ?? null
 }
 
-export function getSessionCookieOptions(maxAge = 60 * 60 * 24 * 7) {
+export function getSessionCookieOptions(maxAge = PERSISTENT_SESSION_MAX_AGE_SECONDS) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,

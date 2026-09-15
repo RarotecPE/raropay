@@ -28,7 +28,6 @@ export async function PATCH(
     const userId = parseInt(id)
     const body = await request.json()
     const {
-      nexus_email,
       phone,
       department,
       meal_voucher_enabled,
@@ -37,15 +36,11 @@ export async function PATCH(
       transport_voucher_limit,
     } = body
 
-    const nextNexusEmail = typeof nexus_email === "string" && nexus_email.trim()
-      ? nexus_email.trim().toLowerCase()
-      : null
     const nextPhone = phone ?? null
     const nextDepartment = department ?? null
     const nextMealVoucherEnabled = meal_voucher_enabled ?? null
     const nextMealVoucherLimit = meal_voucher_limit ?? null
     const nextTransportVoucherEnabled = transport_voucher_enabled ?? null
-    const nexusEmailProvided = Object.prototype.hasOwnProperty.call(body, "nexus_email")
     const phoneProvided = Object.prototype.hasOwnProperty.call(body, "phone")
     const departmentProvided = Object.prototype.hasOwnProperty.call(body, "department")
     const transportLimitProvided = Object.prototype.hasOwnProperty.call(body, "transport_voucher_limit")
@@ -61,26 +56,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
-    if (nexusEmailProvided && nextNexusEmail) {
-      const [emailInUse] = await sql`
-        SELECT id
-        FROM users
-        WHERE LOWER(nexus_email) = ${nextNexusEmail}
-          AND id != ${userId}
-        LIMIT 1
-      `
-
-      if (emailInUse) {
-        return NextResponse.json(
-          { error: "Este e-mail do RaroNexus já está vinculado a outro usuário." },
-          { status: 400 },
-        )
-      }
-    }
-
     const [updatedUser] = await sql`
       UPDATE users SET
-        nexus_email = CASE WHEN ${nexusEmailProvided} THEN ${nextNexusEmail} ELSE nexus_email END,
         phone = CASE WHEN ${phoneProvided} THEN ${nextPhone} ELSE phone END,
         department = CASE WHEN ${departmentProvided} THEN ${nextDepartment} ELSE department END,
         meal_voucher_enabled = COALESCE(${nextMealVoucherEnabled}, meal_voucher_enabled),
