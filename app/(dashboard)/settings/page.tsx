@@ -115,7 +115,7 @@ export default function SettingsPage() {
   const [pixEnabled, setPixEnabled] = useState(false)
   const [savingPix, setSavingPix] = useState(false)
 
-  const isAdmin = user?.role === "director" || user?.role === "admin" || user?.role === "finance"
+  const isAdmin = user?.role === "director" || user?.role === "admin" || user?.role === "financial"
 
   async function fetchAdvanceSettings() {
     try {
@@ -436,69 +436,9 @@ body: JSON.stringify({
               <div>
                 <CardTitle className="text-base">Gerenciamento de Usuários</CardTitle>
                 <CardDescription>
-                  Adicione novos usuários e gerencie suas permissões
+                  Usuários sincronizados pelo RaroNexus. Dados complementares ficam no RaroPay.
                 </CardDescription>
               </div>
-              <Dialog open={newUserOpen} onOpenChange={setNewUserOpen}>
-                {false && <DialogTrigger asChild>
-                  <Button size="sm">
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Novo Usuário
-                  </Button>
-                </DialogTrigger>}
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Criar Novo Usuário</DialogTitle>
-                    <DialogDescription>
-                      Preencha os dados do novo usuário
-                    </DialogDescription>
-                  </DialogHeader>
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel>Nome Completo</FieldLabel>
-                      <Input
-                        value={newUserData.name}
-                        onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
-                        placeholder="Nome do funcionário"
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel>E-mail</FieldLabel>
-                      <Input
-                        type="email"
-                        value={newUserData.email}
-                        onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
-                        placeholder="email@rarotec.com.br"
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel>Nível de Acesso</FieldLabel>
-                      <Select 
-                        value={newUserData.role} 
-                        onValueChange={(value) => setNewUserData({ ...newUserData, role: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="employee">Funcionário</SelectItem>
-                          <SelectItem value="manager">Gestor</SelectItem>
-                          <SelectItem value="director">Diretoria Financeira</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  </FieldGroup>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setNewUserOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleCreateUser} disabled={saving}>
-                      {saving ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                      Criar Usuário
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
             </CardHeader>
             <CardContent>
               <Table>
@@ -507,13 +447,12 @@ body: JSON.stringify({
                     <TableHead>Nome</TableHead>
                     <TableHead>E-mail</TableHead>
                     <TableHead>Nível de Acesso</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                         Nenhum usuário cadastrado
                       </TableCell>
                     </TableRow>
@@ -523,31 +462,10 @@ body: JSON.stringify({
                         <TableCell className="font-medium">{u.name}</TableCell>
                         <TableCell>{u.email}</TableCell>
                         <TableCell>
-                          <Badge variant={u.role === "director" || u.role === "admin" ? "default" : u.role === "manager" || u.role === "finance" ? "secondary" : "outline"}>
+                          <Badge variant={u.role === "director" || u.role === "admin" ? "default" : u.role === "manager" || u.role === "financial" ? "secondary" : "outline"}>
                             <Shield className="mr-1 h-3 w-3" />
                             {getRoleLabel(u.role)}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditUser(u)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            {String(u.id) !== String(user?.id) && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteUser(String(u.id))}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -857,39 +775,6 @@ body: JSON.stringify({
         )}
       </Tabs>
 
-      {/* Dialog de editar usuário */}
-      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Permissão</DialogTitle>
-            <DialogDescription>
-              Altere o nível de acesso de {selectedUser?.name}
-            </DialogDescription>
-          </DialogHeader>
-          <Field>
-            <FieldLabel>Nível de Acesso</FieldLabel>
-            <Select value={editedRole} onValueChange={setEditedRole}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="employee">Funcionário</SelectItem>
-                <SelectItem value="manager">Gestor</SelectItem>
-                <SelectItem value="director">Diretoria Financeira</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUserOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdateUserRole} disabled={saving}>
-              {saving ? <Spinner className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
 {/* Dialog de editar referência */}
       <Dialog open={editLimitOpen} onOpenChange={setEditLimitOpen}>

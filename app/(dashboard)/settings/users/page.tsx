@@ -1,37 +1,33 @@
 'use client'
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
-import { 
-  Users, 
-  Plus,
-  Search, 
-  Edit, 
-  Trash2, 
-  Shield, 
-  User,
-  Mail,
-  Phone,
+import {
   Building,
-  UserCog,
+  Bus,
   CheckCircle,
-  XCircle,
+  Edit,
+  Search,
+  Shield,
+  User,
+  Users,
   Utensils,
-  Bus
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { formatCurrency } from "@/lib/format"
 
 interface UserData {
   id: number
+  nexus_user_id?: string | null
+  nexus_email?: string | null
   name: string
   email: string
   phone: string | null
@@ -49,14 +45,18 @@ const roleLabels: Record<string, string> = {
   admin: "Administrador",
   manager: "Gestor",
   financial: "Financeiro",
-  employee: "Funcionário"
+  director: "Diretoria",
+  coordinator: "Coordenador",
+  employee: "Funcionário",
 }
 
 const roleBadgeColors: Record<string, string> = {
   admin: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
   manager: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800",
   financial: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800",
-  employee: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700"
+  director: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
+  coordinator: "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800",
+  employee: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/60 dark:text-gray-200 dark:border-gray-700",
 }
 
 export default function UsersPage() {
@@ -68,9 +68,9 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<UserData | null>(null)
   const [processing, setProcessing] = useState(false)
 
-  // Form states
   const [formName, setFormName] = useState("")
   const [formEmail, setFormEmail] = useState("")
+  const [formNexusEmail, setFormNexusEmail] = useState("")
   const [formPhone, setFormPhone] = useState("")
   const [formDepartment, setFormDepartment] = useState("")
   const [formRole, setFormRole] = useState("employee")
@@ -87,10 +87,14 @@ export default function UsersPage() {
     try {
       setLoading(true)
       const res = await fetch("/api/users")
-      if (res.ok) {
-        const data = await res.json()
-        setUsers(Array.isArray(data) ? data : [])
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        toast.error(data?.error || "Erro ao carregar usuários")
+        return
       }
+
+      setUsers(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Erro ao carregar usuários:", error)
       toast.error("Erro ao carregar usuários")
@@ -102,6 +106,7 @@ export default function UsersPage() {
   function resetForm() {
     setFormName("")
     setFormEmail("")
+    setFormNexusEmail("")
     setFormPhone("")
     setFormDepartment("")
     setFormRole("employee")
@@ -116,6 +121,7 @@ export default function UsersPage() {
     setEditingUser(user)
     setFormName(user.name)
     setFormEmail(user.email)
+    setFormNexusEmail(user.nexus_email || "")
     setFormPhone(user.phone || "")
     setFormDepartment(user.department || "")
     setFormRole(user.role)
@@ -126,30 +132,16 @@ export default function UsersPage() {
     setIsDialogOpen(true)
   }
 
-  function openNewDialog() {
-    toast.error("Cadastre novos usuários no RaroNexus")
-  }
-
   async function handleSubmit() {
-    if (!formName || !formEmail) {
-      toast.error("Nome e email são obrigatórios")
-      return
-    }
-
-    if (!editingUser) {
-      toast.error("Senha é obrigatória para novos usuários")
-      return
-    }
+    if (!editingUser) return
 
     try {
       setProcessing(true)
-      
+
       const payload = {
-        name: formName,
-        email: formEmail,
+        nexus_email: formNexusEmail || null,
         phone: formPhone || null,
         department: formDepartment || null,
-        role: formRole,
         meal_voucher_enabled: formMealVoucherEnabled,
         meal_voucher_limit: formMealVoucherEnabled ? parseFloat(formMealVoucherLimit) || 250 : null,
         transport_voucher_enabled: formTransportVoucherEnabled,
@@ -158,27 +150,20 @@ export default function UsersPage() {
           : null,
       }
 
-      const res = await fetch(
-        editingUser ? `/api/users/${editingUser.id}` : "/api/users",
-        {
-          method: editingUser ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        }
-      )
+      const res = await fetch(`/api/users/${editingUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
 
       if (res.ok) {
-        toast.success(editingUser ? "Usuário atualizado!" : "Usuário criado!")
+        toast.success("Configurações do usuário atualizadas!")
         setIsDialogOpen(false)
         resetForm()
         fetchUsers()
       } else {
-        try {
-          const errorData = await res.json()
-          toast.error(errorData.error || "Erro ao salvar usuário")
-        } catch {
-          toast.error(`Erro ao salvar usuário (${res.status})`)
-        }
+        const errorData = await res.json().catch(() => null)
+        toast.error(errorData?.error || `Erro ao salvar usuário (${res.status})`)
       }
     } catch (error) {
       console.error("Erro ao salvar usuário:", error)
@@ -188,135 +173,97 @@ export default function UsersPage() {
     }
   }
 
-  async function toggleUserStatus(user: UserData) {
-    try {
-      const res = await fetch(`/api/users/${user.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !user.is_active })
-      })
+  const filteredUsers = users.filter((user) => {
+    const query = searchTerm.toLowerCase()
+    const matchesSearch =
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      (user.department?.toLowerCase().includes(query) ?? false)
 
-      if (res.ok) {
-        toast.success(user.is_active ? "Usuário desativado" : "Usuário ativado")
-        fetchUsers()
-      }
-    } catch (error) {
-      console.error("Erro ao alterar status:", error)
-      toast.error("Erro ao alterar status")
-    }
-  }
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.department?.toLowerCase().includes(searchTerm.toLowerCase()))
-    
     const matchesRole = roleFilter === "all" || user.role === roleFilter
-    
+
     return matchesSearch && matchesRole
   })
 
   const stats = {
     total: users.length,
-    active: users.filter(u => u.is_active).length,
-    admins: users.filter(u => u.role === "admin").length,
-    financial: users.filter(u => u.role === "financial").length
+    active: users.filter((u) => u.is_active).length,
+    admins: users.filter((u) => u.role === "admin").length,
+    financial: users.filter((u) => u.role === "financial").length,
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
           <p className="text-muted-foreground">
-            Gerencie os usuários do sistema
+            Usuários sincronizados pelo RaroNexus. Edite aqui apenas dados complementares do RaroPay.
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          {false && <DialogTrigger asChild>
-            <Button onClick={openNewDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Usuário
-            </Button>
-          </DialogTrigger>}
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>
-                {editingUser ? "Editar Usuário" : "Novo Usuário"}
-              </DialogTitle>
+              <DialogTitle>Editar configurações do usuário</DialogTitle>
               <DialogDescription>
-                {editingUser 
-                  ? "Atualize as informações do usuário"
-                  : "Preencha as informações para criar um novo usuário"
-                }
+                Identidade e função são gerenciadas pelo RaroNexus.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome Completo *</Label>
-                <Input
-                  id="name"
-                  placeholder="Nome do usuário"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                />
+                <Label htmlFor="name">Nome</Label>
+                <Input id="name" value={formName} readOnly disabled />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
+                <Label htmlFor="email">E-mail</Label>
+                <Input id="email" type="email" value={formEmail} readOnly disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nexus_email">E-mail do RaroNexus</Label>
                 <Input
-                  id="email"
+                  id="nexus_email"
                   type="email"
-                  placeholder="email@exemplo.com"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
+                  placeholder="email cadastrado no RaroNexus"
+                  value={formNexusEmail}
+                  onChange={(e) => setFormNexusEmail(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Se o e-mail for igual ao cadastrado no RaroNexus, deixe em branco.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
-                  <Input
-                    id="phone"
-                    placeholder="(00) 00000-0000"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                  />
+                  <Label htmlFor="role">Função</Label>
+                  <Input id="role" value={roleLabels[formRole] || formRole} readOnly disabled />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Departamento</Label>
                   <Input
                     id="department"
-                    placeholder="Departamento"
+                    placeholder="-"
                     value={formDepartment}
                     onChange={(e) => setFormDepartment(e.target.value)}
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Função</Label>
-                <Select value={formRole} onValueChange={setFormRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="employee">Funcionário</SelectItem>
-                    <SelectItem value="financial">Financeiro</SelectItem>
-                    <SelectItem value="manager">Gestor</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  placeholder="(00) 00000-0000"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                />
               </div>
-              
-              {/* Vale-Refeição */}
-              <div className="space-y-3 pt-3 border-t">
+
+              <div className="space-y-3 border-t pt-3">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="meal_voucher"
                     checked={formMealVoucherEnabled}
                     onCheckedChange={(checked) => setFormMealVoucherEnabled(checked as boolean)}
                   />
-                  <Label htmlFor="meal_voucher" className="flex items-center gap-2 cursor-pointer">
+                  <Label htmlFor="meal_voucher" className="flex cursor-pointer items-center gap-2">
                     <Utensils className="h-4 w-4 text-orange-500" />
                     Habilitar Vale-Refeição
                   </Label>
@@ -338,15 +285,14 @@ export default function UsersPage() {
                 )}
               </div>
 
-              {/* Vale-Transporte */}
-              <div className="space-y-3 pt-3 border-t">
+              <div className="space-y-3 border-t pt-3">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="transport_voucher"
                     checked={formTransportVoucherEnabled}
                     onCheckedChange={(checked) => setFormTransportVoucherEnabled(checked as boolean)}
                   />
-                  <Label htmlFor="transport_voucher" className="flex items-center gap-2 cursor-pointer">
+                  <Label htmlFor="transport_voucher" className="flex cursor-pointer items-center gap-2">
                     <Bus className="h-4 w-4 text-blue-500" />
                     Habilitar Vale-Transporte
                   </Label>
@@ -369,7 +315,7 @@ export default function UsersPage() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground pl-6">
+                  <p className="pl-6 text-xs text-muted-foreground">
                     Permite lançar despesas de Vale-Transporte. Defina um limite opcional para controle orçamentário.
                   </p>
                 )}
@@ -380,14 +326,13 @@ export default function UsersPage() {
                 Cancelar
               </Button>
               <Button onClick={handleSubmit} disabled={processing}>
-                {processing ? "Salvando..." : (editingUser ? "Atualizar" : "Criar")}
+                {processing ? "Salvando..." : "Salvar"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -427,7 +372,6 @@ export default function UsersPage() {
         </Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Usuários</CardTitle>
@@ -436,7 +380,7 @@ export default function UsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center mb-6">
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -453,8 +397,10 @@ export default function UsersPage() {
               <SelectContent>
                 <SelectItem value="all">Todas as funções</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="director">Diretoria</SelectItem>
                 <SelectItem value="manager">Gestor</SelectItem>
                 <SelectItem value="financial">Financeiro</SelectItem>
+                <SelectItem value="coordinator">Coordenador</SelectItem>
                 <SelectItem value="employee">Funcionário</SelectItem>
               </SelectContent>
             </Select>
@@ -462,11 +408,11 @@ export default function UsersPage() {
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
             </div>
           ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="mx-auto h-12 w-12 mb-4 opacity-50" />
+            <div className="py-8 text-center text-muted-foreground">
+              <Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
               <p>Nenhum usuário encontrado</p>
             </div>
           ) : (
@@ -488,7 +434,7 @@ export default function UsersPage() {
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                             <User className="h-5 w-5 text-primary" />
                           </div>
                           <div>
@@ -497,9 +443,7 @@ export default function UsersPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {user.department || <span className="text-muted-foreground">-</span>}
-                      </TableCell>
+                      <TableCell>{user.department || <span className="text-muted-foreground">-</span>}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={roleBadgeColors[user.role]}>
                           {roleLabels[user.role] || user.role}
@@ -512,57 +456,38 @@ export default function UsersPage() {
                             <span className="text-sm">{formatCurrency(user.meal_voucher_limit || 250)}</span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-sm text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {user.transport_voucher_enabled ? (
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5">
-                              <Bus className="h-4 w-4 text-blue-500" />
-                              <span className="text-sm">
-                                {user.transport_voucher_limit != null
-                                  ? formatCurrency(user.transport_voucher_limit)
-                                  : "Ilimitado"}
-                              </span>
-                            </div>
+                          <div className="flex items-center gap-1.5">
+                            <Bus className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm">
+                              {user.transport_voucher_limit != null
+                                ? formatCurrency(user.transport_voucher_limit)
+                                : "Ilimitado"}
+                            </span>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-sm text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell>
                         {user.is_active ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800">
+                          <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300">
                             Ativo
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800/60 dark:text-gray-300 dark:border-gray-700">
+                          <Badge variant="outline" className="border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300">
                             Inativo
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(user)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => toggleUserStatus(user)}
-                          >
-                            {user.is_active ? (
-                              <XCircle className="h-4 w-4 text-red-600" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            )}
-                          </Button>
-                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(user)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -4,14 +4,14 @@ import { sql } from "@/lib/db"
 
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   return PATCH(request, context)
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getSession()
@@ -28,32 +28,29 @@ export async function PATCH(
     const userId = parseInt(id)
     const body = await request.json()
     const {
-      name,
-      email,
+      nexus_email,
       phone,
-      role,
       department,
-      active,
-      is_active,
       meal_voucher_enabled,
       meal_voucher_limit,
       transport_voucher_enabled,
       transport_voucher_limit,
     } = body
 
-    const isActive = active !== undefined ? active : is_active
-    const nextName = name ?? null
-    const nextEmail = email ?? null
+    const nextNexusEmail = typeof nexus_email === "string" && nexus_email.trim()
+      ? nexus_email.trim().toLowerCase()
+      : null
     const nextPhone = phone ?? null
-    const nextRole = role ?? null
     const nextDepartment = department ?? null
-    const nextActive = isActive ?? null
     const nextMealVoucherEnabled = meal_voucher_enabled ?? null
     const nextMealVoucherLimit = meal_voucher_limit ?? null
     const nextTransportVoucherEnabled = transport_voucher_enabled ?? null
-    const transportLimitProvided = transport_voucher_enabled !== undefined && transport_voucher_enabled !== null
-    const transportLimit = transport_voucher_enabled
-      ? (transport_voucher_limit === null || transport_voucher_limit === undefined || transport_voucher_limit === '' ? null : Number(transport_voucher_limit))
+    const nexusEmailProvided = Object.prototype.hasOwnProperty.call(body, "nexus_email")
+    const phoneProvided = Object.prototype.hasOwnProperty.call(body, "phone")
+    const departmentProvided = Object.prototype.hasOwnProperty.call(body, "department")
+    const transportLimitProvided = Object.prototype.hasOwnProperty.call(body, "transport_voucher_limit")
+    const transportLimit = transportLimitProvided
+      ? (transport_voucher_limit === null || transport_voucher_limit === undefined || transport_voucher_limit === "" ? null : Number(transport_voucher_limit))
       : null
 
     const [existingUser] = await sql`
@@ -64,30 +61,35 @@ export async function PATCH(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
     }
 
-    if (nextEmail) {
+    if (nexusEmailProvided && nextNexusEmail) {
       const [emailInUse] = await sql`
-        SELECT id FROM users WHERE email = ${nextEmail} AND id != ${userId}
+        SELECT id
+        FROM users
+        WHERE LOWER(nexus_email) = ${nextNexusEmail}
+          AND id != ${userId}
+        LIMIT 1
       `
+
       if (emailInUse) {
-        return NextResponse.json({ error: "Email já em uso" }, { status: 400 })
+        return NextResponse.json(
+          { error: "Este e-mail do RaroNexus já está vinculado a outro usuário." },
+          { status: 400 },
+        )
       }
     }
 
     const [updatedUser] = await sql`
       UPDATE users SET
-        name = COALESCE(${nextName}, name),
-        email = COALESCE(${nextEmail}, email),
-        phone = COALESCE(${nextPhone}, phone),
-        role = COALESCE(${nextRole}, role),
-        department = COALESCE(${nextDepartment}, department),
-        active = COALESCE(${nextActive}, active),
+        nexus_email = CASE WHEN ${nexusEmailProvided} THEN ${nextNexusEmail} ELSE nexus_email END,
+        phone = CASE WHEN ${phoneProvided} THEN ${nextPhone} ELSE phone END,
+        department = CASE WHEN ${departmentProvided} THEN ${nextDepartment} ELSE department END,
         meal_voucher_enabled = COALESCE(${nextMealVoucherEnabled}, meal_voucher_enabled),
         meal_voucher_limit = COALESCE(${nextMealVoucherLimit}, meal_voucher_limit),
         transport_voucher_enabled = COALESCE(${nextTransportVoucherEnabled}, transport_voucher_enabled),
         transport_voucher_limit = CASE WHEN ${transportLimitProvided} THEN ${transportLimit} ELSE transport_voucher_limit END,
         updated_at = NOW()
       WHERE id = ${userId}
-      RETURNING id, name, email, phone, role, department, active,
+      RETURNING id, nexus_user_id, nexus_email, name, email, phone, role, department, active,
                 meal_voucher_enabled, meal_voucher_limit, transport_voucher_enabled, transport_voucher_limit, created_at
     `
 
@@ -102,42 +104,9 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getSession()
-    if (!user) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
-    }
-
-    if (user.role !== "director") {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
-    }
-
-    const { id } = await params
-    const userId = parseInt(id)
-
-    if (userId === user.id) {
-      return NextResponse.json({ error: "Não é possível excluir seu próprio usuário" }, { status: 400 })
-    }
-
-    const expenses = await sql`
-      SELECT COUNT(*) as count FROM expenses WHERE user_id = ${userId}
-    `
-
-    if (Number(expenses[0].count) > 0) {
-      return NextResponse.json({
-        error: "Não é possível excluir usuário com despesas registradas",
-      }, { status: 400 })
-    }
-
-    await sql`DELETE FROM users WHERE id = ${userId}`
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Erro ao excluir usuário:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
-  }
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "Exclusão local desabilitada. Gerencie o acesso do usuário no RaroNexus." },
+    { status: 410 },
+  )
 }

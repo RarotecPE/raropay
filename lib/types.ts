@@ -22,6 +22,8 @@ export type LocationType = 'capital' | 'interior'
 
 export interface User {
   id: number
+  nexus_user_id?: string | null
+  nexus_email?: string | null
   name: string
   surname: string | null
   email: string

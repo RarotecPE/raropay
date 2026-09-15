@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -15,11 +14,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/components/auth-provider'
 import { useBranding } from '@/hooks/use-branding'
-import { getInitials } from '@/lib/format'
-import { roleLabels } from '@/lib/types'
 import {
   FileText,
   Home,
@@ -337,25 +333,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
-
-      <SidebarFooter className="border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-3 px-1">
-          <Avatar className="w-8 h-8">
-            {user?.avatar_url ? <AvatarImage src={user.avatar_url} alt={user.name} /> : null}
-            <AvatarFallback className="text-xs bg-sidebar-primary text-sidebar-primary-foreground font-medium">
-              {user ? getInitials(user.name) : '?'}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col min-w-0">
-            <span className="truncate text-sm font-medium text-sidebar-foreground">
-              {user?.name || 'Carregando...'}
-            </span>
-            <span className="truncate text-xs text-sidebar-foreground/60">
-              {user ? roleLabels[user.role] : ''}
-            </span>
-          </div>
-        </div>
-      </SidebarFooter>
     </Sidebar>
   )
 }

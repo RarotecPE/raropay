@@ -8,7 +8,7 @@ export const SESSION_COOKIE = "raropay_global_session"
 export const SSO_STATE_COOKIE = "raropay_sso_state"
 export const SSO_NEXT_COOKIE = "raropay_sso_next"
 
-const SENTINEL_PASSWORD_HASH = "raronexus-auth-only"
+export const SENTINEL_PASSWORD_HASH = "raronexus-auth-only"
 
 const roleLabels: Record<UserRole, string> = {
   employee: "Funcionário",
@@ -208,6 +208,8 @@ async function introspectToken(token: string): Promise<RaroNexusSession | null> 
 
 interface LocalUserRow {
   id: number
+  nexus_user_id: string | null
+  nexus_email: string | null
   name: string
   email: string
   phone: string | null
@@ -227,22 +229,27 @@ export async function ensureLocalUser(session: RaroNexusSession): Promise<Sessio
   const name = session.user.nome.trim() || email
 
   const [existing] = await sql<LocalUserRow[]>`
-    SELECT id, name, email, phone, role, department, active
+    SELECT id, nexus_user_id, nexus_email, name, email, phone, role, department, active
     FROM users
-    WHERE LOWER(email) = ${email}
+    WHERE nexus_user_id = ${session.user.id}::uuid
+       OR LOWER(nexus_email) = ${email}
+       OR LOWER(email) = ${email}
+    ORDER BY CASE WHEN nexus_user_id = ${session.user.id}::uuid THEN 0 ELSE 1 END
     LIMIT 1
   `
 
   if (existing) {
     const [updated] = await sql<LocalUserRow[]>`
       UPDATE users
-      SET name = ${name},
+      SET nexus_user_id = ${session.user.id}::uuid,
+          nexus_email = ${email},
+          name = ${name},
           email = ${email},
           role = ${role},
           active = true,
           updated_at = NOW()
       WHERE id = ${existing.id}
-      RETURNING id, name, email, phone, role, department, active
+      RETURNING id, nexus_user_id, nexus_email, name, email, phone, role, department, active
     `
 
     if (!updated) return null
@@ -250,9 +257,9 @@ export async function ensureLocalUser(session: RaroNexusSession): Promise<Sessio
   }
 
   const [created] = await sql<LocalUserRow[]>`
-    INSERT INTO users (name, email, password_hash, role, department, active)
-    VALUES (${name}, ${email}, ${SENTINEL_PASSWORD_HASH}, ${role}, null, true)
-    RETURNING id, name, email, phone, role, department, active
+    INSERT INTO users (nexus_user_id, nexus_email, name, email, password_hash, role, department, active)
+    VALUES (${session.user.id}::uuid, ${email}, ${name}, ${email}, ${SENTINEL_PASSWORD_HASH}, ${role}, null, true)
+    RETURNING id, nexus_user_id, nexus_email, name, email, phone, role, department, active
   `
 
   if (!created) return null
