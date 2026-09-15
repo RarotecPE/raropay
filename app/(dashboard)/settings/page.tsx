@@ -586,10 +586,10 @@ body: JSON.stringify({
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Indicador de Storage */}
-                <div className="border rounded-lg p-4 bg-slate-50/50">
+                <div className="rounded-lg border border-border bg-card/70 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <HardDrive className="h-5 w-5 text-slate-600" />
+                      <HardDrive className="h-5 w-5 text-sky-400 dark:text-sky-300" />
                       <h3 className="font-semibold">Uso de Armazenamento</h3>
                     </div>
                     <Button 
@@ -608,7 +608,7 @@ body: JSON.stringify({
                       {/* Banco de Dados (Neon) */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <Database className="h-4 w-4 text-blue-600" />
+                          <Database className="h-4 w-4 text-blue-500 dark:text-blue-300" />
                           <span className="font-medium">Banco de Dados (Neon)</span>
                         </div>
                         <div className="space-y-2">
@@ -616,7 +616,7 @@ body: JSON.stringify({
                             <span className="text-muted-foreground">
                               {formatBytes(storageStats.database.sizeBytes)} de <span className="text-xl">∞</span>
                             </span>
-                            <span className="font-medium text-blue-600">
+                            <span className="font-medium text-blue-600 dark:text-blue-300">
                               ~${storageStats.database.estimatedCost}/mês
                             </span>
                           </div>
@@ -625,15 +625,15 @@ body: JSON.stringify({
                           </p>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground mt-2">
-                          <div className="bg-muted/50 p-2 rounded border border-border">
+                          <div className="rounded border border-border bg-muted/40 p-2">
                             <div className="font-medium text-foreground">{storageStats.database.tables.expenses}</div>
                             <div>Despesas</div>
                           </div>
-                          <div className="bg-muted/50 p-2 rounded border border-border">
+                          <div className="rounded border border-border bg-muted/40 p-2">
                             <div className="font-medium text-foreground">{storageStats.database.tables.batches}</div>
                             <div>Remessas</div>
                           </div>
-                          <div className="bg-muted/50 p-2 rounded border border-border">
+                          <div className="rounded border border-border bg-muted/40 p-2">
                             <div className="font-medium text-foreground">{storageStats.database.tables.users}</div>
                             <div>Usuários</div>
                           </div>
@@ -643,7 +643,7 @@ body: JSON.stringify({
                       {/* Arquivos (Cloudflare R2) */}
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <Cloud className="h-4 w-4 text-purple-600" />
+                          <Cloud className="h-4 w-4 text-violet-500 dark:text-violet-300" />
                           <span className="font-medium">Arquivos (Cloudflare R2)</span>
                         </div>
                         <div className="space-y-2">
@@ -651,7 +651,7 @@ body: JSON.stringify({
                             <span className="text-muted-foreground">
                               {formatBytes(storageStats.blob.sizeBytes)} de <span className="text-xl">∞</span>
                             </span>
-                            <span className="font-medium text-purple-600">
+                            <span className="font-medium text-violet-600 dark:text-violet-300">
                               ~${storageStats.blob.estimatedCost}/mês
                             </span>
                           </div>
@@ -660,13 +660,13 @@ body: JSON.stringify({
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-2">
-                          <div className="bg-muted/50 p-2 rounded border border-border flex items-center gap-1">
+                          <div className="flex items-center gap-1 rounded border border-border bg-muted/40 p-2">
                             <FileText className="h-3 w-3" />
                             <span className="font-medium text-foreground">{storageStats.blob.totalFiles}</span>
                             <span>arquivos</span>
                           </div>
                           {Object.entries(storageStats.blob.filesByType).map(([type, data]) => (
-                            <div key={type} className="bg-muted/50 p-2 rounded border border-border flex items-center gap-1">
+                            <div key={type} className="flex items-center gap-1 rounded border border-border bg-muted/40 p-2">
                               {type === 'pdf' ? <FileText className="h-3 w-3" /> : <Image className="h-3 w-3" />}
                               <span className="font-medium text-foreground">{data.count}</span>
                               <span>.{type}</span>
@@ -690,14 +690,14 @@ body: JSON.stringify({
                 </div>
 
                 {/* Limpar dados de despesas */}
-                <div className="border rounded-lg p-4 bg-red-50/50">
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                   <div className="flex items-start gap-4">
-                    <div className="p-2 bg-red-100 rounded-lg">
-                      <Trash2 className="h-6 w-6 text-red-600" />
+                    <div className="rounded-lg bg-red-500/15 p-2">
+                      <Trash2 className="h-6 w-6 text-red-500 dark:text-red-300" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-red-900">Limpar Dados de Despesas</h3>
-                      <p className="text-sm text-red-700 mt-1">
+                      <h3 className="font-semibold text-red-700 dark:text-red-200">Limpar Dados de Despesas</h3>
+                      <p className="mt-1 text-sm text-red-700 dark:text-red-200/90">
                         Remove todas as despesas, remessas e histórico do sistema. 
                         <strong> Usuários e veículos NÃO serão afetados.</strong>
                       </p>
@@ -725,11 +725,11 @@ body: JSON.stringify({
                                 <li>Todas as remessas de despesas</li>
                                 <li>Todo o histórico de despesas</li>
                               </ul>
-                              <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                                <p className="text-sm text-green-800 font-medium">
+                              <div className="mt-4 rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3">
+                                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-200">
                                   Os seguintes dados serão mantidos:
                                 </p>
-                                <ul className="list-disc list-inside space-y-1 text-sm text-green-700 mt-1">
+                                <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-emerald-700 dark:text-emerald-200/90">
                                   <li>Todos os usuários</li>
                                   <li>Todos os veículos</li>
                                   <li>Limites de categoria</li>
