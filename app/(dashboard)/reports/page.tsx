@@ -952,6 +952,19 @@ export default function ReportsPage() {
                       </Pie>
                       <Tooltip 
                         formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          backgroundColor: 'var(--card)',
+                          borderColor: 'var(--border)',
+                          borderRadius: '0.5rem',
+                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                        }}
+                        labelStyle={{
+                          color: 'var(--foreground)',
+                          fontWeight: 600,
+                        }}
+                        itemStyle={{
+                          color: 'var(--foreground)',
+                        }}
                       />
                     </RechartsPieChart>
                   </ResponsiveContainer>
@@ -971,11 +984,35 @@ export default function ReportsPage() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={reportData.byType}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="label" />
-                      <YAxis tickFormatter={(value) => `R$${value/1000}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                      <XAxis 
+                        dataKey="label" 
+                        stroke="var(--border)"
+                        tick={{ fill: 'currentColor' }}
+                        className="text-slate-600 dark:text-slate-200"
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `R$${value/1000}k`} 
+                        stroke="var(--border)"
+                        tick={{ fill: 'currentColor' }}
+                        className="text-slate-600 dark:text-slate-200"
+                      />
                       <Tooltip 
                         formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          backgroundColor: 'var(--card)',
+                          borderColor: 'var(--border)',
+                          borderRadius: '0.5rem',
+                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                        }}
+                        labelStyle={{
+                          color: 'var(--foreground)',
+                          fontWeight: 600,
+                        }}
+                        itemStyle={{
+                          color: 'var(--foreground)',
+                        }}
+                        cursor={{ fill: 'var(--muted)', opacity: 0.25 }}
                       />
                       <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -996,13 +1033,37 @@ export default function ReportsPage() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={reportData.byMonth}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(value) => `R$${value/1000}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                      <XAxis 
+                        dataKey="month" 
+                        stroke="var(--border)"
+                        tick={{ fill: 'currentColor' }}
+                        className="text-slate-600 dark:text-slate-200"
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `R$${value/1000}k`} 
+                        stroke="var(--border)"
+                        tick={{ fill: 'currentColor' }}
+                        className="text-slate-600 dark:text-slate-200"
+                      />
                       <Tooltip 
                         formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          backgroundColor: 'var(--card)',
+                          borderColor: 'var(--border)',
+                          borderRadius: '0.5rem',
+                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                        }}
+                        labelStyle={{
+                          color: 'var(--foreground)',
+                          fontWeight: 600,
+                        }}
+                        itemStyle={{
+                          color: 'var(--foreground)',
+                        }}
+                        cursor={{ fill: 'var(--muted)', opacity: 0.25 }}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
                       <Bar dataKey="total" name="Valor Total" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

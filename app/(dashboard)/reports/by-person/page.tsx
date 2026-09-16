@@ -278,10 +278,42 @@ export default function ByPersonReportPage() {
                   <div className="h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 40 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" angle={-35} textAnchor="end" height={60} fontSize={12} />
-                        <YAxis fontSize={12} tickFormatter={(v) => `R$${v}`} />
-                        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
+                        <XAxis 
+                          dataKey="name" 
+                          angle={-35} 
+                          textAnchor="end" 
+                          height={60} 
+                          fontSize={12}
+                          stroke="var(--border)"
+                          tick={{ fill: 'currentColor' }}
+                          className="text-slate-600 dark:text-slate-200"
+                        />
+                        <YAxis 
+                          fontSize={12} 
+                          tickFormatter={(v) => `R$${v}`}
+                          stroke="var(--border)"
+                          tick={{ fill: 'currentColor' }}
+                          className="text-slate-600 dark:text-slate-200"
+                        />
+                        <Tooltip 
+                          formatter={(v: number) => formatCurrency(v)}
+                          contentStyle={{
+                            backgroundColor: 'var(--card)',
+                            borderColor: 'var(--border)',
+                            borderRadius: '0.5rem',
+                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                          }}
+                          labelStyle={{
+                            color: 'var(--foreground)',
+                            fontWeight: 600,
+                            marginBottom: '0.25rem',
+                          }}
+                          itemStyle={{
+                            color: 'var(--foreground)',
+                          }}
+                          cursor={{ fill: 'var(--muted)', opacity: 0.25 }}
+                        />
                         <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                           {chartData?.map((entry, index) => (
                             <Cell

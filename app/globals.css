@@ -188,4 +188,60 @@ html {
   ::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/30;
   }
+
+  /* Recharts Gráficos - Temas Claro e Escuro */
+  .recharts-cartesian-axis-tick text,
+  .recharts-cartesian-axis-tick-value,
+  .recharts-text {
+    fill: var(--muted-foreground) !important;
+  }
+
+  .dark .recharts-cartesian-axis-tick text,
+  .dark .recharts-cartesian-axis-tick-value,
+  .dark .recharts-text,
+  .dark .recharts-legend-item-text {
+    fill: oklch(0.92 0.01 240) !important;
+  }
+
+  .recharts-cartesian-axis line {
+    stroke: var(--border) !important;
+  }
+
+  .recharts-cartesian-grid line {
+    stroke: var(--border) !important;
+    opacity: 0.6;
+  }
+
+  .dark .recharts-cartesian-grid line {
+    stroke: var(--border) !important;
+    opacity: 0.35;
+  }
+
+  .recharts-default-tooltip {
+    background-color: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+    color: var(--foreground) !important;
+    padding: 8px 12px !important;
+  }
+
+  .recharts-tooltip-label {
+    color: var(--foreground) !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .recharts-tooltip-item,
+  .recharts-tooltip-item-name,
+  .recharts-tooltip-item-separator,
+  .recharts-tooltip-item-value {
+    color: var(--foreground) !important;
+  }
+
+  .recharts-tooltip-cursor {
+    fill: var(--muted) !important;
+    opacity: 0.25 !important;
+  }
 }

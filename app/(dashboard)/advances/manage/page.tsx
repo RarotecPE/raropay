@@ -195,10 +195,42 @@ export default function ManageAdvancesPage() {
             <div className="w-full" style={{ height: Math.max(240, chartData.length * 48) }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tickFormatter={(v) => formatCurrency(Number(v))} fontSize={12} />
-                  <YAxis type="category" dataKey="name" width={140} fontSize={12} />
-                  <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" opacity={0.5} />
+                  <XAxis 
+                    type="number" 
+                    tickFormatter={(v) => formatCurrency(Number(v))} 
+                    fontSize={12} 
+                    stroke="var(--border)"
+                    tick={{ fill: 'currentColor' }}
+                    className="text-slate-600 dark:text-slate-200"
+                  />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    width={140} 
+                    fontSize={12} 
+                    stroke="var(--border)"
+                    tick={{ fill: 'currentColor' }}
+                    className="text-slate-600 dark:text-slate-200"
+                  />
+                  <Tooltip 
+                    formatter={(v) => formatCurrency(Number(v))} 
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.5rem',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+                    }}
+                    labelStyle={{
+                      color: 'var(--foreground)',
+                      fontWeight: 600,
+                      marginBottom: '0.25rem',
+                    }}
+                    itemStyle={{
+                      color: 'var(--foreground)',
+                    }}
+                    cursor={{ fill: 'var(--muted)', opacity: 0.25 }}
+                  />
                   <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
