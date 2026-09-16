@@ -1927,7 +1927,7 @@ is_capital: locationType === 'capital',
 
       {/* Alertas */}
       {limitWarning && (
-        <Alert variant={limitWarning.includes('excede') ? 'destructive' : 'default'} className="mb-4">
+        <Alert variant={limitWarning.includes('excede') ? 'destructive' : 'warning'} className="mb-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{limitWarning}</AlertDescription>
         </Alert>

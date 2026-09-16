@@ -1134,7 +1134,7 @@ return (
                     {expense.is_irregular_route && (
                       <div className="col-span-full p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
                         <div className="flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                           <div>
                             <p className="font-medium text-amber-800 dark:text-amber-200">Rota Irregular</p>
                             <p className="text-sm text-amber-700 dark:text-amber-300">

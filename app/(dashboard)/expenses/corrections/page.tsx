@@ -207,7 +207,7 @@ export default function CorrectionsPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <AlertCircle className="w-6 h-6 text-warning" />
+            <AlertCircle className="w-6 h-6 text-amber-500 dark:text-amber-400" />
             Correções Solicitadas
           </h1>
           <p className="text-muted-foreground">
@@ -224,13 +224,13 @@ export default function CorrectionsPage() {
 
       {/* Alerta */}
       {filteredExpenses.length > 0 && (
-        <Card className="border-warning/50 bg-warning/5">
+        <Card className="border-amber-300/80 bg-amber-50/70 dark:border-amber-800/60 dark:bg-amber-950/25">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium text-warning-foreground">Atenção</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-medium text-amber-900 dark:text-amber-200">Atenção</p>
+                <p className="text-sm text-amber-800/90 dark:text-slate-300">
                   Você tem {filteredExpenses.length} despesa(s) aguardando correção. 
                   Leia o motivo da solicitação e faça as correções necessárias para reenviar.
                 </p>
@@ -439,7 +439,7 @@ export default function CorrectionsPage() {
           {filteredExpenses.map((expense) => (
             <div key={expense.id} className="space-y-2">
               {/* Card de Motivo da Correção */}
-              <Card className={`border-warning/50 bg-warning/5 ${selectedExpenses.has(expense.id) ? 'ring-2 ring-primary' : ''}`}>
+              <Card className={`border-amber-300/80 bg-amber-50/60 dark:border-amber-800/60 dark:bg-amber-950/25 ${selectedExpenses.has(expense.id) ? 'ring-2 ring-primary' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 flex-1">
@@ -448,10 +448,10 @@ export default function CorrectionsPage() {
                         onCheckedChange={() => toggleExpenseSelection(expense.id)}
                         className="mt-1"
                       />
-                      <MessageSquare className="w-5 h-5 text-warning mt-0.5 shrink-0" />
+                      <MessageSquare className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                       <div className="space-y-1 flex-1">
-                        <p className="font-medium text-sm">Motivo da Solicitação de Correção</p>
-                        <p className={`text-sm text-muted-foreground ${!expandedReasons.has(expense.id) ? 'line-clamp-2' : ''}`}>
+                        <p className="font-medium text-sm text-amber-900 dark:text-amber-200">Motivo da Solicitação de Correção</p>
+                        <p className={`text-sm text-amber-800/90 dark:text-slate-300 ${!expandedReasons.has(expense.id) ? 'line-clamp-2' : ''}`}>
                           {expense.rejection_reason || 'Não informado'}
                         </p>
                         {expense.rejection_reason && expense.rejection_reason.length > 100 && (

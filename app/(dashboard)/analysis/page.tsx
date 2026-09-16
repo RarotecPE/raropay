@@ -1334,16 +1334,16 @@ if (res.ok) {
                   <CardContent className="border-t pt-4 space-y-4">
                     {/* Informações do Adiantamento */}
                     {(batch.advance_received_amount || batch.advance_exceeded !== null) && (
-                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <h4 className="font-medium flex items-center gap-2 text-amber-800 mb-3">
-                          <Wallet className="w-4 h-4" />
+                      <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-lg">
+                        <h4 className="font-medium flex items-center gap-2 text-amber-800 dark:text-amber-200 mb-3">
+                          <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                           Informações do Adiantamento
                         </h4>
                         <div className="grid gap-4 md:grid-cols-3">
                           {batch.advance_received_amount && (
                             <div>
-                              <p className="text-sm text-muted-foreground">Valor Adiantado</p>
-                              <p className="font-semibold text-amber-800">{formatCurrency(batch.advance_received_amount)}</p>
+                              <p className="text-sm text-muted-foreground dark:text-slate-400">Valor Adiantado</p>
+                              <p className="font-semibold text-amber-800 dark:text-amber-300">{formatCurrency(batch.advance_received_amount)}</p>
                             </div>
                           )}
                           {batch.advance_received_date && (
@@ -1417,15 +1417,15 @@ if (res.ok) {
                       )}
 
                       {batch.bank_slip_data && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg md:col-span-2 lg:col-span-1">
-                          <p className="text-sm text-amber-800 font-medium mb-2">Dados do Boleto (Legado)</p>
+                        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-lg md:col-span-2 lg:col-span-1">
+                          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-2">Dados do Boleto (Legado)</p>
                           <div className="text-sm space-y-1">
-                            <p><span className="text-muted-foreground">Banco:</span> {batch.bank_slip_data.bank}</p>
-                            <p><span className="text-muted-foreground">Beneficiário:</span> {batch.bank_slip_data.beneficiary}</p>
-                            <p><span className="text-muted-foreground">Valor:</span> {formatCurrency(batch.bank_slip_data.amount)}</p>
-                            <p><span className="text-muted-foreground">Vencimento:</span> {formatDate(batch.bank_slip_data.due_date)}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Banco:</span> {batch.bank_slip_data.bank}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Beneficiário:</span> {batch.bank_slip_data.beneficiary}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Valor:</span> {formatCurrency(batch.bank_slip_data.amount)}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Vencimento:</span> {formatDate(batch.bank_slip_data.due_date)}</p>
                             <p className="font-mono text-xs break-all">
-                              <span className="text-muted-foreground">Código:</span> {batch.bank_slip_data.barcode}
+                              <span className="text-muted-foreground dark:text-slate-400">Código:</span> {batch.bank_slip_data.barcode}
                             </p>
                           </div>
                         </div>
@@ -1433,14 +1433,14 @@ if (res.ok) {
                     </div>
 
                     {(batch.observations || batch.finance_observations || isAdmin) && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-lg">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-blue-800 font-medium">Observações</p>
+                          <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">Observações</p>
                           {isAdmin && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-6 px-2 text-blue-700 hover:text-blue-800 hover:bg-blue-100"
+                              className="h-6 px-2 text-blue-700 dark:text-blue-300 hover:text-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40"
                               onClick={() => openEditBatchObsModal(batch)}
                             >
                               <Pencil className="w-3 h-3 mr-1" />
@@ -1450,28 +1450,28 @@ if (res.ok) {
                         </div>
                         {batch.observations && (
                           <div className="mt-2">
-                            <p className="text-xs text-blue-600 font-medium">Do Funcionário:</p>
-                            <p className="text-sm text-blue-700">{batch.observations}</p>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Do Funcionário:</p>
+                            <p className="text-sm text-blue-700 dark:text-slate-300">{batch.observations}</p>
                           </div>
                         )}
                         {batch.finance_observations && (
                           <div className="mt-2">
-                            <p className="text-xs text-blue-600 font-medium">Do Financeiro:</p>
-                            <p className="text-sm text-blue-700">{batch.finance_observations}</p>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Do Financeiro:</p>
+                            <p className="text-sm text-blue-700 dark:text-slate-300">{batch.finance_observations}</p>
                           </div>
                         )}
                         {!batch.observations && !batch.finance_observations && isAdmin && (
-                          <p className="text-xs text-blue-600 mt-1 italic">Nenhuma observação. Clique em Editar para adicionar.</p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 italic">Nenhuma observação. Clique em Editar para adicionar.</p>
                         )}
                       </div>
                     )}
 
                     {batch.rejection_reason && (
-                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-800 font-medium">
+                      <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 rounded-lg">
+                        <p className="text-sm text-red-800 dark:text-red-200 font-medium">
                           {batch.status === 'correction' ? 'Solicitação de Correção' : 'Motivo da Rejeição'}
                         </p>
-                        <p className="text-sm text-red-700 mt-1">{batch.rejection_reason}</p>
+                        <p className="text-sm text-red-700 dark:text-slate-300 mt-1">{batch.rejection_reason}</p>
                       </div>
                     )}
 
@@ -2079,7 +2079,7 @@ if (res.ok) {
                         key={expense.id} 
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected 
-                            ? 'bg-red-50 border-red-300' 
+                            ? 'bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-800/60' 
                             : 'hover:bg-muted/50'
                         }`}
                         onClick={() => toggleExpenseForReject(expense.id)}

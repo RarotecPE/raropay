@@ -519,12 +519,12 @@ export default function BatchHistoryPage() {
 
                     {/* Motivo de rejeição */}
                     {batch.status === 'rejected' && batch.rejection_reason && (
-                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 rounded-lg">
                         <div className="flex items-start gap-3">
-                          <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                          <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
                           <div>
-                            <p className="font-medium text-red-800">Motivo da Rejeição</p>
-                            <p className="text-sm text-red-700 mt-1">{batch.rejection_reason}</p>
+                            <p className="font-medium text-red-800 dark:text-red-200">Motivo da Rejeição</p>
+                            <p className="text-sm text-red-700 dark:text-slate-300 mt-1">{batch.rejection_reason}</p>
                           </div>
                         </div>
                       </div>
@@ -550,7 +550,7 @@ export default function BatchHistoryPage() {
 
                       {batch.refund_method && (
                         <div className="p-3 bg-muted/50 rounded-lg">
-                          <p className="text-sm text-muted-foreground">M��todo de Reembolso</p>
+                          <p className="text-sm text-muted-foreground">Método de Reembolso</p>
                           <p className="font-medium flex items-center gap-2">
                             <Building2 className="w-4 h-4" />
                             {batch.refund_method === 'conta_bb' ? 'Conta Banco do Brasil' : 'Boleto Bancário'}
@@ -559,22 +559,22 @@ export default function BatchHistoryPage() {
                       )}
 
                       {batch.bank_slip_data && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg md:col-span-2 lg:col-span-1">
-                          <p className="text-sm text-amber-800 font-medium mb-2">Dados do Boleto</p>
+                        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-lg md:col-span-2 lg:col-span-1">
+                          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium mb-2">Dados do Boleto</p>
                           <div className="text-sm space-y-1">
-                            <p><span className="text-muted-foreground">Banco:</span> {batch.bank_slip_data.bank}</p>
-                            <p><span className="text-muted-foreground">Beneficiário:</span> {batch.bank_slip_data.beneficiary}</p>
-                            <p><span className="text-muted-foreground">Valor:</span> {formatCurrency(batch.bank_slip_data.amount)}</p>
-                            <p><span className="text-muted-foreground">Vencimento:</span> {formatDate(batch.bank_slip_data.due_date)}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Banco:</span> {batch.bank_slip_data.bank}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Beneficiário:</span> {batch.bank_slip_data.beneficiary}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Valor:</span> {formatCurrency(batch.bank_slip_data.amount)}</p>
+                            <p><span className="text-muted-foreground dark:text-slate-400">Vencimento:</span> {formatDate(batch.bank_slip_data.due_date)}</p>
                           </div>
                         </div>
                       )}
                     </div>
 
                     {batch.observations && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800 font-medium">Suas Observações</p>
-                        <p className="text-sm text-blue-700 mt-1">{batch.observations}</p>
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">Suas Observações</p>
+                        <p className="text-sm text-blue-700 dark:text-slate-300 mt-1">{batch.observations}</p>
                       </div>
                     )}
 

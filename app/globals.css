@@ -79,8 +79,8 @@ html {
   --chart-5: oklch(0.75 0.1 220);
   --success: oklch(0.6 0.18 145);
   --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.75 0.15 85);
-  --warning-foreground: oklch(0.25 0.05 85);
+  --warning: oklch(0.78 0.16 85);
+  --warning-foreground: oklch(1 0 0);
   --info: oklch(0.65 0.15 240);
   --info-foreground: oklch(1 0 0);
   
