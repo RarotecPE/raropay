@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
 import { useAuth } from "@/components/auth-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -208,6 +206,10 @@ export default function ReportsPage() {
     
     setLoading(true)
     try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ])
       const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.width
       const pageHeight = doc.internal.pageSize.height

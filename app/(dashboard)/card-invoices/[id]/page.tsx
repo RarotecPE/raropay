@@ -51,8 +51,6 @@ import {
 } from "@/components/ui/dialog"
 import { ExpenseCard } from "@/components/expense-card"
 import { toast } from "sonner"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -356,8 +354,13 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
   }
 
   // Gerar PDF
-  const downloadPDF = () => {
+  const downloadPDF = async () => {
     if (!data) return
+
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ])
 
     const doc = new jsPDF()
     const { invoice } = data

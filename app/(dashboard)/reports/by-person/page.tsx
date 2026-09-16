@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -87,8 +85,12 @@ export default function ByPersonReportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function generatePDF() {
+  async function generatePDF() {
     if (!data) return
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ])
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
     const pageWidth = doc.internal.pageSize.getWidth()
 
