@@ -57,7 +57,12 @@ export async function GET(request: Request) {
       `
     }
 
-    return NextResponse.json(requests)
+    const formattedRequests = requests.map((r: any) => ({
+      ...r,
+      unread_count: parseInt(r.unread_count || '0', 10)
+    }))
+
+    return NextResponse.json(formattedRequests)
   } catch (error) {
     console.error("Erro ao buscar solicitações:", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })

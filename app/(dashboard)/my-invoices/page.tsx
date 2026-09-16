@@ -90,16 +90,28 @@ export default function MyInvoicesPage() {
 
   // Contar pendentes
   const pendingCount = analysisRequests?.filter(r => r.status !== 'resolved').length || 0
-  const unreadCount = analysisRequests?.reduce((acc, r) => acc + (r.unread_count || 0), 0) || 0
+  const unreadCount = analysisRequests?.reduce((acc, r) => acc + Number(r.unread_count || 0), 0) || 0
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Pendente</Badge>
+        return (
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/70">
+            Pendente
+          </Badge>
+        )
       case 'in_progress':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Em Andamento</Badge>
+        return (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/70">
+            Em Andamento
+          </Badge>
+        )
       case 'resolved':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Resolvida</Badge>
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/70">
+            Resolvida
+          </Badge>
+        )
       default:
         return null
     }
@@ -135,36 +147,36 @@ export default function MyInvoicesPage() {
                 <CreditCard className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Faturas Disponíveis</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">Faturas Disponíveis</p>
                 <p className="text-2xl font-bold">{invoices?.length || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className={pendingCount > 0 ? "border-amber-300 bg-amber-50/50" : ""}>
+        <Card className={pendingCount > 0 ? "border-amber-300 bg-amber-50/50 dark:border-amber-800/60 dark:bg-amber-950/20" : ""}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-lg ${pendingCount > 0 ? "bg-amber-100" : "bg-muted"}`}>
-                <AlertTriangle className={`w-6 h-6 ${pendingCount > 0 ? "text-amber-600" : "text-muted-foreground"}`} />
+              <div className={`p-3 rounded-lg ${pendingCount > 0 ? "bg-amber-100 dark:bg-amber-900/40" : "bg-muted"}`}>
+                <AlertTriangle className={`w-6 h-6 ${pendingCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Análises Pendentes</p>
-                <p className={`text-2xl font-bold ${pendingCount > 0 ? "text-amber-600" : ""}`}>{pendingCount}</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">Análises Pendentes</p>
+                <p className={`text-2xl font-bold ${pendingCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>{pendingCount}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className={unreadCount > 0 ? "border-red-300 bg-red-50/50" : ""}>
+        <Card className={unreadCount > 0 ? "border-red-300 bg-red-50/50 dark:border-red-800/60 dark:bg-red-950/20" : ""}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-lg ${unreadCount > 0 ? "bg-red-100" : "bg-muted"}`}>
-                <MessageSquare className={`w-6 h-6 ${unreadCount > 0 ? "text-red-600" : "text-muted-foreground"}`} />
+              <div className={`p-3 rounded-lg ${unreadCount > 0 ? "bg-red-100 dark:bg-red-900/40" : "bg-muted"}`}>
+                <MessageSquare className={`w-6 h-6 ${unreadCount > 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`} />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Mensagens Não Lidas</p>
-                <p className={`text-2xl font-bold ${unreadCount > 0 ? "text-red-600" : ""}`}>{unreadCount}</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">Mensagens Não Lidas</p>
+                <p className={`text-2xl font-bold ${unreadCount > 0 ? "text-red-600 dark:text-red-400" : ""}`}>{unreadCount}</p>
               </div>
             </div>
           </CardContent>
@@ -207,35 +219,40 @@ export default function MyInvoicesPage() {
 
             {/* Lista de Solicitações */}
             <div className="space-y-3">
-              {filteredRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className={`p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${
-                    request.unread_count > 0 ? "border-red-300 bg-red-50/30" : ""
-                  }`}
-                  onClick={() => router.push(`/my-invoices/analysis/${request.id}`)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold">{request.subject}</h4>
-                        {request.unread_count > 0 && (
-                          <Badge className="bg-red-500 text-white text-xs">
-                            {request.unread_count} nova(s)
-                          </Badge>
-                        )}
+              {filteredRequests.map((request) => {
+                const hasUnread = Number(request.unread_count) > 0
+                return (
+                  <div
+                    key={request.id}
+                    className={`p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${
+                      hasUnread 
+                        ? "border-red-300 bg-red-50/30 dark:border-red-800/60 dark:bg-red-950/20" 
+                        : "border-border bg-card"
+                    }`}
+                    onClick={() => router.push(`/my-invoices/analysis/${request.id}`)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-foreground">{request.subject}</h4>
+                          {hasUnread && (
+                            <Badge className="bg-red-500 text-white text-xs">
+                              {Number(request.unread_count)} nova(s)
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground dark:text-slate-400">
+                          Fatura: <span className="font-medium text-foreground">{request.invoice_name}</span> • Criada em {formatDate(request.created_at)}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Fatura: {request.invoice_name} • Criada em {formatDate(request.created_at)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {getStatusBadge(request.status)}
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      <div className="flex items-center gap-3">
+                        {getStatusBadge(request.status)}
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               {filteredRequests.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -261,14 +278,18 @@ export default function MyInvoicesPage() {
               {invoices.map((invoice) => {
                 const invoiceRequests = requestsByInvoice[invoice.id] || []
                 const hasPending = invoiceRequests.some(r => r.status !== 'resolved')
-                const hasUnread = invoiceRequests.some(r => r.unread_count > 0)
+                const hasUnread = invoiceRequests.some(r => Number(r.unread_count) > 0)
                 
                 return (
                   <div
                     key={invoice.id}
                     className={`p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors ${
-                      hasPending ? "border-amber-300" : ""
-                    } ${hasUnread ? "border-red-300" : ""}`}
+                      hasUnread 
+                        ? "border-red-300 bg-red-50/30 dark:border-red-800/60 dark:bg-red-950/20" 
+                        : hasPending 
+                          ? "border-amber-300 bg-amber-50/30 dark:border-amber-800/60 dark:bg-amber-950/20" 
+                          : "border-border bg-card"
+                    }`}
                     onClick={() => router.push(`/my-invoices/${invoice.id}`)}
                   >
                     <div className="flex items-center justify-between">
@@ -277,10 +298,10 @@ export default function MyInvoicesPage() {
                           <CreditCard className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <h4 className="font-semibold flex items-center gap-2">
+                          <h4 className="font-semibold flex items-center gap-2 text-foreground">
                             Fatura {invoice.reference_name}
                             {hasPending && (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/70">
                                 Análise Pendente
                               </Badge>
                             )}
@@ -290,12 +311,12 @@ export default function MyInvoicesPage() {
                               </Badge>
                             )}
                           </h4>
-                          <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground dark:text-slate-400 flex items-center gap-2">
                             <Calendar className="w-3 h-3" />
                             {formatDate(invoice.start_date)} → {formatDate(invoice.end_date)}
                           </p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {invoice.my_expense_count} despesa{invoice.my_expense_count !== 1 ? 's' : ''} • {formatCurrency(Number(invoice.my_total_amount))}
+                          <p className="text-sm text-muted-foreground dark:text-slate-400 mt-1">
+                            {invoice.my_expense_count} despesa{invoice.my_expense_count !== 1 ? 's' : ''} • <span className="font-medium text-foreground">{formatCurrency(Number(invoice.my_total_amount))}</span>
                           </p>
                         </div>
                       </div>

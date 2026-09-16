@@ -985,13 +985,13 @@ if (res.ok) {
   function getStatusBadge(status: string) {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary" className="bg-amber-100 text-amber-800">Pendente</Badge>
+        return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/60">Pendente</Badge>
       case 'approved':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Aprovada</Badge>
+        return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border dark:border-emerald-800/60">Aprovada</Badge>
       case 'rejected':
         return <Badge variant="destructive">Rejeitada</Badge>
       case 'correction':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Em Correção</Badge>
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 dark:border dark:border-orange-800/60">Em Correção</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -1043,12 +1043,12 @@ if (res.ok) {
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Clock className="w-5 h-5 text-amber-600" />
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Pendentes</p>
-                <p className="text-2xl font-bold">{totals.pending}</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">Pendentes</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totals.pending}</p>
               </div>
             </div>
           </CardContent>
@@ -1060,12 +1060,12 @@ if (res.ok) {
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Edit3 className="w-5 h-5 text-orange-600" />
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/40 rounded-lg">
+                <Edit3 className="w-5 h-5 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Em Correção</p>
-                <p className="text-2xl font-bold">{totals.correction}</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">Em Correção</p>
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{totals.correction}</p>
               </div>
             </div>
           </CardContent>
@@ -1077,12 +1077,12 @@ if (res.ok) {
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-green-100 dark:bg-emerald-900/40 rounded-lg">
+                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Aprovadas</p>
-                <p className="text-2xl font-bold">{totals.approved}</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">Aprovadas</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-emerald-400">{totals.approved}</p>
               </div>
             </div>
           </CardContent>
@@ -1094,12 +1094,12 @@ if (res.ok) {
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <XCircle className="w-5 h-5 text-red-600" />
+              <div className="p-2 bg-red-100 dark:bg-red-900/40 rounded-lg">
+                <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Rejeitadas</p>
-                <p className="text-2xl font-bold">{totals.rejected}</p>
+                <p className="text-sm text-muted-foreground dark:text-slate-400">Rejeitadas</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{totals.rejected}</p>
               </div>
             </div>
           </CardContent>
