@@ -11,7 +11,7 @@ interface RaroNexusBrandingPayload {
 }
 
 function absoluteInternalUrl(path: string) {
-  const baseUrl = process.env.RAROPAY_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3000"
+  const baseUrl = process.env.RAROPAY_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3003"
   return `${baseUrl}${path.startsWith("/") ? path : `/${path}`}`
 }
 

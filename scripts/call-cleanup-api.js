@@ -1,7 +1,7 @@
 // Script para chamar a API de limpeza de blobs
 const baseUrl = process.env.VERCEL_URL 
   ? `https://${process.env.VERCEL_URL}` 
-  : 'http://localhost:3000'
+  : 'http://localhost:3003'
 
 async function cleanup() {
   console.log('Chamando API de limpeza de blobs...')
