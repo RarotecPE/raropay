@@ -170,9 +170,74 @@ html {
     @apply ring-2 ring-primary/20 border-primary/50;
   }
   
-  /* Botões com transições suaves */
+  /* Botões com transições suaves e cursor interativo */
   button {
     @apply transition-all duration-200;
+  }
+
+  /* Cursores de interação para toda a plataforma */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]):not([disabled]),
+  a,
+  summary,
+  select:not(:disabled),
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled),
+  label[for],
+  label:has(input:not(:disabled)),
+  [data-slot="button"]:not(:disabled),
+  [data-slot="dropdown-menu-item"]:not([data-disabled]),
+  [data-slot="dropdown-menu-checkbox-item"]:not([data-disabled]),
+  [data-slot="dropdown-menu-radio-item"]:not([data-disabled]),
+  [data-slot="dropdown-menu-sub-trigger"]:not([data-disabled]),
+  [data-slot="context-menu-item"]:not([data-disabled]),
+  [data-slot="context-menu-checkbox-item"]:not([data-disabled]),
+  [data-slot="context-menu-radio-item"]:not([data-disabled]),
+  [data-slot="context-menu-sub-trigger"]:not([data-disabled]),
+  [data-slot="menubar-item"]:not([data-disabled]),
+  [data-slot="menubar-checkbox-item"]:not([data-disabled]),
+  [data-slot="menubar-radio-item"]:not([data-disabled]),
+  [data-slot="menubar-sub-trigger"]:not([data-disabled]),
+  [data-slot="select-trigger"]:not([data-disabled]):not(:disabled),
+  [data-slot="select-item"]:not([data-disabled]),
+  [data-slot="select-scroll-up-button"],
+  [data-slot="select-scroll-down-button"],
+  [data-slot="tabs-trigger"]:not([disabled]),
+  [data-slot="accordion-trigger"]:not([disabled]),
+  [data-slot="switch"]:not([data-disabled]):not([disabled]),
+  [data-slot="checkbox"]:not([data-disabled]):not([disabled]),
+  [data-slot="slider"]:not([data-disabled]),
+  [data-slot="slider-thumb"],
+  [data-slot="pagination-link"],
+  [data-slot="dialog-close"],
+  [data-slot="sheet-close"],
+  [data-slot="toast-close"],
+  [data-slot="sidebar-menu-button"],
+  [data-slot="sidebar-menu-action"],
+  [data-slot="sidebar-menu-sub-button"],
+  [data-slot="sidebar-trigger"],
+  [data-slot="sidebar-rail"],
+  [data-slot="command-item"]:not([data-disabled="true"]),
+  .clickable,
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  [role="button"]:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled,
+  [data-disabled="true"],
+  [data-disabled],
+  [aria-disabled="true"],
+  .cursor-not-allowed {
+    cursor: not-allowed;
   }
   
   /* Scrollbar personalizada */

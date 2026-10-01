@@ -5,7 +5,7 @@ import { getBooleanSetting } from "@/lib/settings"
 import { SETTING_ADVANCE_PIX_ENABLED } from "@/lib/advance-constants"
 
 // GET - Listar solicitações de adiantamento
-// Financeiro vê todas; funcionário vê apenas as suas
+// Financeiro e Admin vêem todas; funcionário vê apenas as suas
 export async function GET() {
   try {
     const user = await getSession()
@@ -15,7 +15,7 @@ export async function GET() {
 
     let requests
 
-    if (user.role === "financial") {
+    if (user.role === "financial" || user.role === "admin") {
       requests = await sql`
         SELECT ar.*,
                u.name as employee_name,

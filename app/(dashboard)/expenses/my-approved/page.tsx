@@ -132,7 +132,7 @@ export default function MyApprovedExpensesPage() {
     const unpaidAmount = unpaidExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
     
     const bySettlementType = filteredExpenses.reduce((acc, e) => {
-      const type = e.settlement_type || 'unknown'
+      const type = e.expense_type || 'unknown'
       acc[type] = (acc[type] || 0) + 1
       return acc
     }, {} as Record<string, number>)

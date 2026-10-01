@@ -12,7 +12,7 @@ export async function GET() {
 
     const userId = session.id
     const canViewAll = canViewAllExpenses(session.role)
-    const isFinanceiro = session.role === 'financeiro' || session.role === 'admin'
+    const isFinanceiro = session.role === 'financial' || session.role === 'admin'
     
     // Buscar contagens por status (despesas individuais)
     // IMPORTANTE: total_approved e total_amount devem usar o mesmo filtro de data (mês atual)

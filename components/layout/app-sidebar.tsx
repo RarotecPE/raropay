@@ -149,7 +149,7 @@ export function AppSidebar() {
       url: '/advances/manage',
       icon: Wallet,
       description: 'Gestão de adiantamentos',
-      roles: ['financial'],
+      roles: ['financial', 'admin'],
     },
     {
       title: 'Análise',

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
+import { getCategoryLabel, getExpenseTypeLabel } from "@/lib/format"
 
 // PATCH - Editar despesa vinculada a uma solicitação de análise
 export async function PATCH(
@@ -67,12 +68,6 @@ export async function PATCH(
     `
 
     // Registrar a edição na tabela de vínculo
-    const typeLabels: Record<string, string> = {
-      corporate_card: 'Cartão Corporativo',
-      reimbursement: 'Reembolso',
-      advance: 'Adiantamento'
-    }
-    
     const changes = []
     if (description && description !== oldExpense.description) {
       changes.push(`Descrição: "${oldExpense.description}" → "${description}"`)
@@ -84,10 +79,10 @@ export async function PATCH(
       changes.push(`Data: ${oldExpense.expense_date} → ${expense_date}`)
     }
     if (category && category !== oldExpense.category) {
-      changes.push(`Categoria: ${oldExpense.category} → ${category}`)
+      changes.push(`Categoria: ${getCategoryLabel(oldExpense.category)} → ${getCategoryLabel(category)}`)
     }
     if (expense_type && expense_type !== oldExpense.expense_type) {
-      changes.push(`Tipo: ${typeLabels[oldExpense.expense_type] || oldExpense.expense_type} → ${typeLabels[expense_type] || expense_type}`)
+      changes.push(`Tipo: ${getExpenseTypeLabel(oldExpense.expense_type)} → ${getExpenseTypeLabel(expense_type)}`)
     }
     if (km_before && parseFloat(km_before) !== parseFloat(oldExpense.km_before || '0')) {
       changes.push(`Km Inicial: ${oldExpense.km_before || 0} → ${km_before}`)

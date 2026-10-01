@@ -132,17 +132,22 @@ const categoryLabels: Record<string, string> = {
   office_supplies: 'Material de Escritório',
   meal_voucher: 'Vale-Refeição',
   transport_voucher: 'Vale-Transporte',
+  travel: 'Viagem',
   other: 'Outras Despesas',
   // Português (legado)
   hospedagem: 'Hospedagem',
   alimentacao: 'Alimentação',
   combustivel: 'Combustível',
   deslocamento: 'Deslocamento',
+  transporte: 'Deslocamento',
+  viagem: 'Viagem',
   estacionamento: 'Estacionamento',
   itens_escritorio: 'Itens de Escritório',
+  material_escritorio: 'Material de Escritório',
   vale_refeicao: 'Vale-Refeição',
   vale_transporte: 'Vale-Transporte',
   outras: 'Outras Despesas',
+  outros: 'Outras Despesas',
 }
 
 export function getCategoryLabel(category: string): string {
@@ -173,16 +178,25 @@ const statusLabels: Record<string, string> = {
   // Inglês
   draft: 'Rascunho',
   pending: 'Pendente',
-  submitted: 'Enviado',
+  submitted: 'Enviada',
   processed: 'Processada',
-  approved: 'Aprovado',
-  rejected: 'Rejeitado',
-  correction: 'Correção',
+  approved: 'Aprovada',
+  rejected: 'Rejeitada',
+  correction: 'Em Correção',
+  analysis: 'Em Análise',
   // Português (legado)
   rascunho: 'Rascunho',
-  enviado: 'Pendente',
-  aprovado: 'Aprovado',
-  rejeitado: 'Rejeitado',
+  enviado: 'Enviada',
+  enviada: 'Enviada',
+  pendente: 'Pendente',
+  processada: 'Processada',
+  aprovado: 'Aprovada',
+  aprovada: 'Aprovada',
+  rejeitado: 'Rejeitada',
+  rejeitada: 'Rejeitada',
+  correcao: 'Em Correção',
+  analise: 'Em Análise',
+  em_analise: 'Em Análise',
 }
 
 export function getStatusLabel(status: string): string {
@@ -191,9 +205,21 @@ export function getStatusLabel(status: string): string {
 
 // Labels de nível de acesso
 const roleLabels: Record<string, string> = {
+  // Inglês
+  employee: 'Funcionário',
+  manager: 'Gestor',
+  director: 'Diretoria Financeira',
+  admin: 'Administrador',
+  financial: 'Financeiro',
+  finance: 'Financeiro',
+  coordinator: 'Coordenador',
+  // Português (legado)
   funcionario: 'Funcionário',
   gestor: 'Gestor',
   diretoria: 'Diretoria Financeira',
+  administrador: 'Administrador',
+  financeiro: 'Financeiro',
+  coordenador: 'Coordenador',
 }
 
 export function getRoleLabel(role: string): string {
@@ -210,18 +236,28 @@ export function getStatusBadge(status: string) {
     draft: "outline",
     pending: "secondary",
     submitted: "secondary",
+    processed: "secondary",
+    analysis: "secondary",
     approved: "default",
     rejected: "destructive",
     correction: "outline",
     // Português (legado)
     rascunho: "outline",
     enviado: "secondary",
+    enviada: "secondary",
+    pendente: "secondary",
+    processada: "secondary",
+    analise: "secondary",
+    em_analise: "secondary",
     aprovado: "default",
+    aprovada: "default",
     rejeitado: "destructive",
+    rejeitada: "destructive",
+    correcao: "outline",
   }
   
-  const isApproved = status === "approved" || status === "aprovado"
-  const isCorrection = status === "correction"
+  const isApproved = status === "approved" || status === "aprovado" || status === "aprovada"
+  const isCorrection = status === "correction" || status === "correcao"
   
   let className = undefined
   if (isApproved) {

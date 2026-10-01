@@ -33,7 +33,7 @@ function LoginThemeToggle() {
   return (
     <button
       type="button"
-      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-card/80 p-2 text-muted-foreground shadow-xs backdrop-blur transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/80 bg-card/80 p-2 text-muted-foreground shadow-xs backdrop-blur transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 cursor-pointer"
       aria-label={title}
       title={title}
       onClick={() => setTheme(nextTheme)}
@@ -184,7 +184,7 @@ function LoginContent() {
             type="button"
             onClick={startRaroNexusLogin}
             disabled={ssoLoading || checkingNexusSession}
-            className="flex w-full items-center justify-center gap-3 rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-3 rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
           >
             <KeyRound className="h-5 w-5" />
             {ssoLoading

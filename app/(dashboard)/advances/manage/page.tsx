@@ -66,9 +66,9 @@ export default function ManageAdvancesPage() {
   const [reviewNote, setReviewNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // Proteção de acesso: apenas financeiro
+  // Proteção de acesso: financeiro e admin
   useEffect(() => {
-    if (!authLoading && user && user.role !== 'financial') {
+    if (!authLoading && user && user.role !== 'financial' && user.role !== 'admin') {
       router.replace('/dashboard')
     }
   }, [authLoading, user, router])

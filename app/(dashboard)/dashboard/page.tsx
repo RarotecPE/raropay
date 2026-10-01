@@ -86,12 +86,22 @@ const batchStatusLabels: Record<string, string> = {
   approved: 'Aprovada',
   rejected: 'Rejeitada',
   correction: 'Em Correção',
+  submitted: 'Enviada',
+  processed: 'Processada',
+  analysis: 'Em Análise',
+  draft: 'Rascunho',
 }
 
 const settlementTypeLabels: Record<string, string> = {
   corporate_card: 'Cartão Corporativo',
+  cartao_corporativo: 'Cartão Corporativo',
   reimbursement: 'Reembolso',
+  refund: 'Reembolso',
+  reembolso: 'Reembolso',
   advance: 'Adiantamento',
+  adiantamento: 'Adiantamento',
+  mixed: 'Misto',
+  misto: 'Misto',
 }
 
 export default function DashboardPage() {

@@ -79,12 +79,14 @@ const statusIcons: Record<string, typeof FileText> = {
 
 const categoryIcons: Record<string, typeof FileText> = {
   food: Utensils,
+  meal_voucher: Utensils,
   accommodation: Hotel,
   fuel: Fuel,
   vehicle: Car,
   parking: ParkingCircle,
   travel: Navigation,
   transport: Car,
+  transport_voucher: Bus,
   office_supplies: Package,
   other: Receipt,
 }
@@ -274,7 +276,7 @@ return (
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ALIMENTAÇÃO */}
-        {expense.category === 'food' && (() => {
+        {(expense.category === 'food' || expense.category === 'meal_voucher') && (() => {
           // Parse linked_employees se for string
           let linkedEmployees: any[] = []
           if (expense.linked_employees) {
@@ -1482,7 +1484,7 @@ return (
         )})()}
 
         {/* DESLOCAMENTO/TRANSPORTE */}
-        {(expense.category === 'travel' || expense.category === 'transport') && (() => {
+        {(expense.category === 'travel' || expense.category === 'transport' || expense.category === 'transport_voucher') && (() => {
           // Parse linked_employees se for string
           let linkedEmployees: any[] = []
           if (expense.linked_employees) {
@@ -1602,7 +1604,7 @@ return (
                   <DetailItem icon={Calendar} label="Data" value={expense.expense_date ? formatDate(expense.expense_date) : null} />
                   {/* Removido: is_round_trip não é mais usado */}
                   <DetailItem icon={Route} label="Distância" value={expense.distance_km ? `${Number(expense.distance_km).toLocaleString('pt-BR')} km` : null} />
-                  <DetailItem icon={FileText} label="Tipo do Trajeto" value={expense.trip_type ? (tripTypeLabels[expense.trip_type] || expense.trip_type) : expense.purchase_reason} />
+                  <DetailItem icon={FileText} label="Tipo do Trajeto" value={expense.trip_type ? (globalTripTypeLabels[expense.trip_type] || expense.trip_type) : expense.purchase_reason} />
                   {expense.municipality && (
                     <DetailItem icon={MapPin} label="Localização" value={`${expense.municipality}${expense.state ? `/${expense.state}` : ''}`} />
                   )}

@@ -35,6 +35,7 @@ const categoryLabels: Record<string, string> = {
   maintenance: "Manutenção",
   parking: "Estacionamento",
   meal_voucher: "Vale-Refeição",
+  transport_voucher: "Vale-Transporte",
   other: "Outras Despesas"
 }
 
@@ -119,11 +120,33 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
+      case 'aprovada':
+      case 'aprovado':
         return <Badge className="bg-green-100 text-green-800 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border dark:border-emerald-800/50">Aprovada</Badge>
       case 'pending':
-        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/50">Em Análise</Badge>
+      case 'pendente':
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/50">Pendente</Badge>
       case 'rejected':
+      case 'rejeitada':
+      case 'rejeitado':
         return <Badge className="bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300 dark:border dark:border-red-800/50">Rejeitada</Badge>
+      case 'correction':
+      case 'correcao':
+        return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 dark:border dark:border-orange-800/50">Em Correção</Badge>
+      case 'analysis':
+      case 'analise':
+      case 'em_analise':
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/50">Em Análise</Badge>
+      case 'submitted':
+      case 'enviada':
+      case 'enviado':
+        return <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/50">Enviada</Badge>
+      case 'processed':
+      case 'processada':
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/50">Processada</Badge>
+      case 'draft':
+      case 'rascunho':
+        return <Badge variant="outline">Rascunho</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }

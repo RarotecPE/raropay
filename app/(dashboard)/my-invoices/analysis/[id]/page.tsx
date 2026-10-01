@@ -79,6 +79,7 @@ const categoryLabels: Record<string, string> = {
   maintenance: "Manutenção",
   parking: "Estacionamento",
   meal_voucher: "Vale-Refeição",
+  transport_voucher: "Vale-Transporte",
   other: "Outras Despesas"
 }
 
@@ -104,6 +105,7 @@ interface LinkedExpense {
 const expenseTypeLabels: Record<string, string> = {
   corporate_card: "Cartão Corporativo",
   reimbursement: "Reembolso",
+  refund: "Reembolso",
   advance: "Adiantamento"
 }
 

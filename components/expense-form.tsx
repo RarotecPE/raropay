@@ -111,6 +111,7 @@ interface LinkedPerson {
   name: string
   cpf: string
   isEmployee: boolean
+  userId?: number
 }
 
 // Parada intermediária: mantém município/estado (relatórios) e, quando disponível,
@@ -637,14 +638,35 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         // linked_persons são armazenados em linked_employees e linked_external_parties
         const linkedPersons: LinkedPerson[] = []
         if (expense.linked_employees) {
-          expense.linked_employees.forEach((emp: {user_id: number, name: string}) => {
-            linkedPersons.push({ type: 'employee', id: crypto.randomUUID(), userId: emp.user_id, name: emp.name })
-          })
+          const empList = typeof expense.linked_employees === 'string'
+            ? JSON.parse(expense.linked_employees)
+            : expense.linked_employees
+          if (Array.isArray(empList)) {
+            empList.forEach((emp: any) => {
+              linkedPersons.push({
+                id: crypto.randomUUID(),
+                name: emp.name || '',
+                cpf: emp.cpf || '',
+                isEmployee: emp.isEmployee !== undefined ? Boolean(emp.isEmployee) : true,
+                userId: emp.user_id || emp.userId,
+              })
+            })
+          }
         }
         if (expense.linked_external_parties) {
-          expense.linked_external_parties.forEach((party: {name: string, cpf: string}) => {
-            linkedPersons.push({ type: 'third_party', id: crypto.randomUUID(), name: party.name, cpf: party.cpf })
-          })
+          const extList = typeof expense.linked_external_parties === 'string'
+            ? JSON.parse(expense.linked_external_parties)
+            : expense.linked_external_parties
+          if (Array.isArray(extList)) {
+            extList.forEach((party: any) => {
+              linkedPersons.push({
+                id: crypto.randomUUID(),
+                name: party.name || '',
+                cpf: party.cpf || '',
+                isEmployee: false,
+              })
+            })
+          }
         }
         if (linkedPersons.length > 0) setLinkedPersons(linkedPersons)
         setState(expense.state || 'PE')
@@ -666,14 +688,35 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         // Carregar funcionários e terceiros vinculados
         const foodLinkedPersons: LinkedPerson[] = []
         if (expense.linked_employees) {
-          expense.linked_employees.forEach((emp: {user_id: number, name: string}) => {
-            foodLinkedPersons.push({ type: 'employee', id: crypto.randomUUID(), userId: emp.user_id, name: emp.name })
-          })
+          const empList = typeof expense.linked_employees === 'string'
+            ? JSON.parse(expense.linked_employees)
+            : expense.linked_employees
+          if (Array.isArray(empList)) {
+            empList.forEach((emp: any) => {
+              foodLinkedPersons.push({
+                id: crypto.randomUUID(),
+                name: emp.name || '',
+                cpf: emp.cpf || '',
+                isEmployee: emp.isEmployee !== undefined ? Boolean(emp.isEmployee) : true,
+                userId: emp.user_id || emp.userId,
+              })
+            })
+          }
         }
         if (expense.linked_external_parties) {
-          expense.linked_external_parties.forEach((party: {name: string, cpf: string}) => {
-            foodLinkedPersons.push({ type: 'third_party', id: crypto.randomUUID(), name: party.name, cpf: party.cpf })
-          })
+          const extList = typeof expense.linked_external_parties === 'string'
+            ? JSON.parse(expense.linked_external_parties)
+            : expense.linked_external_parties
+          if (Array.isArray(extList)) {
+            extList.forEach((party: any) => {
+              foodLinkedPersons.push({
+                id: crypto.randomUUID(),
+                name: party.name || '',
+                cpf: party.cpf || '',
+                isEmployee: false,
+              })
+            })
+          }
         }
         if (foodLinkedPersons.length > 0) setLinkedPersons(foodLinkedPersons)
       }
@@ -1785,7 +1828,6 @@ is_capital: locationType === 'capital',
       // Alimentação
       meal_type: mealType || null,
       meal_time: breakfastTime || null,
-      establishment_name: establishmentName || null,
       establishment_cnpj: establishmentCnpj || null,
       // Calcular total de pessoas para a divisão.
       // Alimentação: pessoas vinculadas + o autor APENAS se ele efetuou/participou da despesa.
@@ -2246,7 +2288,6 @@ is_capital: locationType === 'capital',
                         value={exp.value ? formatCurrency(exp.value) : ''}
                         onChange={(e) => updateExtraExpense(exp.id, 'value', parseCurrency(formatCurrencyInput(e.target.value)))}
                         className="w-full sm:w-32 h-11 sm:h-10 text-base sm:text-sm"
-                        className="w-32"
                       />
                       <Button type="button" variant="ghost" size="icon" onClick={() => removeExtraExpense(exp.id)}>
                         <Trash2 className="w-4 h-4 text-destructive" />

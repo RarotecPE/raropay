@@ -33,8 +33,8 @@ export async function GET(
 
     const advanceRequest = requests[0]
 
-    // Permissão: financeiro vê tudo; funcionário só a própria
-    if (user.role !== "financial" && advanceRequest.user_id !== user.id) {
+    // Permissão: financeiro e admin vêem tudo; funcionário só a própria
+    if (user.role !== "financial" && user.role !== "admin" && advanceRequest.user_id !== user.id) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
 
@@ -53,7 +53,7 @@ export async function GET(
   }
 }
 
-// PATCH - Atualizar status (apenas financeiro): approved, rejected, clarification
+// PATCH - Atualizar status (financeiro e admin): approved, rejected, clarification
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -64,7 +64,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
-    if (user.role !== "financial") {
+    if (user.role !== "financial" && user.role !== "admin") {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
 
