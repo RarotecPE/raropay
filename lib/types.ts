@@ -53,6 +53,8 @@ export interface Vehicle {
   owner_type: 'company' | 'employee' | 'third_party'
   owner_id: number | null
   driver_id: number | null
+  owner_name?: string | null
+  driver_name?: string | null
   active: boolean
   created_at: string
   updated_at: string

@@ -103,7 +103,9 @@ export interface ExpenseData {
   total_km?: number
   km_per_liter?: number
   departure_city?: string
+  departure_state?: string
   arrival_city?: string
+  arrival_state?: string
   stops?: any[]
   is_irregular_route?: boolean
   // Deslocamento
@@ -135,6 +137,7 @@ export interface ExpenseData {
     value: number
     isMeal?: boolean
     mealType?: string
+    numberOfPeople?: number
   }>
   // Limite excedido
   exceeds_limit?: boolean
@@ -157,6 +160,7 @@ interface ExpenseCardProps {
   onReject?: () => void
   onDelete?: () => void
   onView?: () => void
+  onUpdate?: () => void
   processing?: boolean
   deleting?: boolean
 }

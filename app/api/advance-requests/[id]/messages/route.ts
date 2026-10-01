@@ -31,7 +31,7 @@ export async function POST(
     }
 
     const advanceRequest = requests[0]
-    if (user.role !== "financial" && advanceRequest.user_id !== user.id) {
+    if (user.role !== "financial" && user.role !== "admin" && advanceRequest.user_id !== user.id) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
 

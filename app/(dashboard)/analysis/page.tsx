@@ -82,6 +82,7 @@ interface Batch {
     due_date: string
   } | null
   observations: string | null
+  finance_observations?: string | null
   total_amount: number
   expense_count: number
   status: string
