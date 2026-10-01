@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "sonner"
-import { Users, Download, ArrowLeft, Info } from "lucide-react"
 import { formatCurrency } from "@/lib/format"
+import { fetchInstitucionalInfo } from "@/lib/institucional"
 import {
   BarChart,
   Bar,
@@ -87,60 +87,89 @@ export default function ByPersonReportPage() {
 
   async function generatePDF() {
     if (!data) return
-    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-      import("jspdf"),
-      import("jspdf-autotable"),
-    ])
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
-    const pageWidth = doc.internal.pageSize.getWidth()
+    try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ])
+      const [institucional] = await Promise.all([
+        fetchInstitucionalInfo(),
+      ])
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
 
-    const fmtDate = (d: string) => {
-      const [y, m, day] = d.split("-")
-      return `${day}/${m}/${y}`
+      const fmtDate = (d: string) => {
+        const [y, m, day] = d.split("-")
+        return `${day}/${m}/${y}`
+      }
+
+      doc.setFillColor(16, 185, 129)
+      doc.rect(0, 0, pageWidth, 28, "F")
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(14)
+      doc.text((institucional.nome || "RAROTEC").toUpperCase(), pageWidth / 2, 10, { align: "center" })
+      doc.setFontSize(10)
+      doc.text(`${institucional.sistema?.nome || "RaroPay"} - Relatório de Gasto Real por Pessoa`, pageWidth / 2, 17, { align: "center" })
+      doc.setFontSize(7.5)
+      doc.text(`${institucional.razao_social} • CNPJ: ${institucional.cnpj}`, pageWidth / 2, 23, { align: "center" })
+
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(10)
+      const statusLabel = STATUS_OPTIONS.find((s) => s.value === data.status)?.label || data.status
+      doc.text(`Período: ${fmtDate(data.startDate)} a ${fmtDate(data.endDate)}`, pageWidth / 2, 38, {
+        align: "center",
+      })
+      doc.text(`Filtro: ${statusLabel}`, pageWidth / 2, 44, { align: "center" })
+
+      doc.setFontSize(9)
+      doc.setTextColor(100, 100, 100)
+      doc.text(
+        "Rateio igual entre participantes. Terceiros somados em linha separada. Uso gerencial.",
+        pageWidth / 2,
+        50,
+        { align: "center" },
+      )
+      doc.setTextColor(0, 0, 0)
+
+      autoTable(doc, {
+        startY: 56,
+        head: [["#", "Pessoa", "Despesas", "Gasto Rateado"]],
+        body: data.byPerson.map((p, i) => [
+          String(i + 1),
+          p.isThirdParty ? `${p.name} (terceiros)` : p.name,
+          String(p.count),
+          formatCurrency(p.total),
+        ]),
+        foot: [["", "TOTAL", String(data.totalExpenses), formatCurrency(data.totalAmount)]],
+        headStyles: { fillColor: [16, 185, 129] },
+        footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold" },
+        styles: { fontSize: 9 },
+      })
+
+      const pageCount = doc.internal.pages.length - 1
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        doc.setFontSize(7)
+        doc.setTextColor(156, 163, 175)
+        doc.text(
+          `${institucional.razao_social} (CNPJ: ${institucional.cnpj}) - Gerado em ${new Date().toLocaleString('pt-BR')}`,
+          14,
+          pageHeight - 6
+        )
+        doc.text(
+          `Página ${i} de ${pageCount}`,
+          pageWidth - 14,
+          pageHeight - 6,
+          { align: "right" }
+        )
+      }
+
+      doc.save(`relatorio-por-pessoa-${data.startDate}-${data.endDate}.pdf`)
+    } catch (error: any) {
+      console.error("Erro ao gerar PDF:", error)
+      toast.error(error instanceof Error ? error.message : (error?.message || "Erro ao gerar PDF"))
     }
-
-    doc.setFillColor(16, 185, 129)
-    doc.rect(0, 0, pageWidth, 28, "F")
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(16)
-    doc.text("SISTEMA FINANCEIRO RAROTEC", pageWidth / 2, 12, { align: "center" })
-    doc.setFontSize(11)
-    doc.text("Relatório de Gasto Real por Pessoa", pageWidth / 2, 20, { align: "center" })
-
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(10)
-    const statusLabel = STATUS_OPTIONS.find((s) => s.value === data.status)?.label || data.status
-    doc.text(`Período: ${fmtDate(data.startDate)} a ${fmtDate(data.endDate)}`, pageWidth / 2, 38, {
-      align: "center",
-    })
-    doc.text(`Filtro: ${statusLabel}`, pageWidth / 2, 44, { align: "center" })
-
-    doc.setFontSize(9)
-    doc.setTextColor(100, 100, 100)
-    doc.text(
-      "Rateio igual entre participantes. Terceiros somados em linha separada. Uso gerencial.",
-      pageWidth / 2,
-      50,
-      { align: "center" },
-    )
-    doc.setTextColor(0, 0, 0)
-
-    autoTable(doc, {
-      startY: 56,
-      head: [["#", "Pessoa", "Despesas", "Gasto Rateado"]],
-      body: data.byPerson.map((p, i) => [
-        String(i + 1),
-        p.isThirdParty ? `${p.name} (terceiros)` : p.name,
-        String(p.count),
-        formatCurrency(p.total),
-      ]),
-      foot: [["", "TOTAL", String(data.totalExpenses), formatCurrency(data.totalAmount)]],
-      headStyles: { fillColor: [16, 185, 129] },
-      footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: "bold" },
-      styles: { fontSize: 9 },
-    })
-
-    doc.save(`relatorio-por-pessoa-${data.startDate}-${data.endDate}.pdf`)
   }
 
   const canView = user && ["admin", "financial"].includes(user.role)

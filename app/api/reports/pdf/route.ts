@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
 import { getAppBranding } from "@/lib/branding.server"
+import { fetchInstitucionalInfo } from "@/lib/institucional"
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,10 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const branding = await getAppBranding()
+    const [branding, institucional] = await Promise.all([
+      getAppBranding(),
+      fetchInstitucionalInfo()
+    ])
     const startDate = searchParams.get("startDate") || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const endDate = searchParams.get("endDate") || new Date().toISOString().split('T')[0]
     const status = searchParams.get("status") || "all"
@@ -156,10 +160,11 @@ export async function GET(request: NextRequest) {
 </head>
 <body>
   <div class="header">
-    <img src="${branding.logoUrl}" alt="${branding.name}" style="width: 64px; height: 64px; object-fit: contain; margin-bottom: 12px;" />
-    <h1>${branding.name}</h1>
-    <p>Relatório de Despesas</p>
-    <p style="margin-top: 10px;">Período: ${formatDate(startDate)} a ${formatDate(endDate)}</p>
+    <img src="${branding.logoUrl}" alt="${institucional.nome}" style="width: 64px; height: 64px; object-fit: contain; margin-bottom: 12px;" />
+    <h1>${institucional.razao_social}</h1>
+    <p style="font-size: 11px; color: #666; margin-top: 4px;">CNPJ: ${institucional.cnpj} &bull; ${institucional.endereco} &bull; Tel: ${institucional.telefone}</p>
+    <p style="font-size: 14px; font-weight: 600; margin-top: 10px; color: #10b981;">Relatório de Despesas</p>
+    <p style="margin-top: 4px; font-size: 11px;">Período: ${formatDate(startDate)} a ${formatDate(endDate)}</p>
   </div>
 
   <div class="summary">
@@ -212,7 +217,8 @@ export async function GET(request: NextRequest) {
 
   <div class="footer">
     <p>Gerado em ${new Date().toLocaleString('pt-BR')} por ${user.name}</p>
-    <p>${branding.name}</p>
+    <p style="margin-top: 4px;">${institucional.razao_social} &bull; CNPJ ${institucional.cnpj} &bull; Contato: ${institucional.email}</p>
+    <p style="margin-top: 4px; color: #9ca3af;">${institucional.sistema?.nome || branding.name} &bull; ${institucional.sistema?.descricao || "Sistema de Gestão Financeira"}</p>
   </div>
 </body>
 </html>
@@ -225,9 +231,9 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="relatorio-despesas-${startDate}-${endDate}.html"`,
       },
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro ao gerar PDF:", error)
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
+    return NextResponse.json({ error: error?.message || "Erro interno do servidor" }, { status: 502 })
   }
 }
 

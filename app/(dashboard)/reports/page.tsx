@@ -21,6 +21,7 @@ import {
   PieChart
 } from "lucide-react"
 import { formatCurrency } from "@/lib/format"
+import { fetchInstitucionalInfo } from "@/lib/institucional"
 import { 
   BarChart, 
   Bar, 
@@ -293,23 +294,30 @@ export default function ReportsPage() {
       } catch {
         // Se não conseguir carregar a logo, continua sem ela
       }
-      
+
+      const institucional = await fetchInstitucionalInfo()
+
       // Título principal na área azul
-      doc.setFontSize(18)
+      doc.setFontSize(15)
       doc.setTextColor(255, 255, 255)
       doc.setFont("helvetica", "bold")
-      doc.text("SISTEMA FINANCEIRO RAROTEC", 130, 18, { align: "center" })
-      
+      doc.text((institucional.nome || "RAROTEC").toUpperCase(), 130, 16, { align: "center" })
+
       // Subtítulo
-      doc.setFontSize(12)
+      doc.setFontSize(11)
       doc.setFont("helvetica", "normal")
       doc.setTextColor(191, 219, 254) // blue-200
-      doc.text("Relatório de Despesas", 130, 30, { align: "center" })
-      
+      doc.text(`${institucional.sistema?.nome || "RaroPay"} - Relatório de Despesas`, 130, 25, { align: "center" })
+
+      // CNPJ e Razão Social
+      doc.setFontSize(7.5)
+      doc.setTextColor(224, 231, 255)
+      doc.text(`${institucional.razao_social} • CNPJ: ${institucional.cnpj}`, 130, 33, { align: "center" })
+
       // Período com destaque
-      doc.setFontSize(10)
+      doc.setFontSize(8.5)
       doc.setTextColor(255, 255, 255)
-      doc.text(`Período: ${formattedStartDate} a ${formattedEndDate}`, 130, 42, { align: "center" })
+      doc.text(`Período: ${formattedStartDate} a ${formattedEndDate}`, 130, 43, { align: "center" })
       
       // ========== RESUMO COMPACTO EM TABELA ==========
       const startY = 62 // Mais espaço após o cabeçalho
@@ -682,7 +690,7 @@ export default function ReportsPage() {
         doc.setTextColor(156, 163, 175)
         doc.setFont("helvetica", "normal")
         doc.text(
-          `Sistema Financeiro Rarotec - Documento gerado em ${new Date().toLocaleString('pt-BR')}`,
+          `${institucional.razao_social} (CNPJ: ${institucional.cnpj}) - Gerado em ${new Date().toLocaleString('pt-BR')}`,
           14,
           pageHeight - 8
         )
@@ -696,10 +704,9 @@ export default function ReportsPage() {
       
       // Salvar PDF
       doc.save(`relatorio-despesas-${startDate}-${endDate}.pdf`)
-      toast.success("PDF gerado com sucesso")
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao gerar PDF:", error)
-      toast.error("Erro ao gerar PDF")
+      toast.error(error instanceof Error ? error.message : (error?.message || "Erro ao gerar PDF"))
     } finally {
       setLoading(false)
     }
