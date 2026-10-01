@@ -144,6 +144,7 @@ const categoryLabels: Record<string, string> = {
   maintenance: "Manutenção",
   parking: "Estacionamento",
   meal_voucher: "Vale-Refeição",
+  transport_voucher: "Vale-Transporte",
   other: "Outras Despesas"
 }
 

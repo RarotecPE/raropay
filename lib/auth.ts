@@ -14,7 +14,7 @@ export const SENTINEL_PASSWORD_HASH = "raronexus-auth-only"
 const roleLabels: Record<UserRole, string> = {
   employee: "Funcionário",
   manager: "Gestor",
-  director: "Diretoria",
+  director: "Diretoria Financeira",
   admin: "Administrador",
   financial: "Financeiro",
   coordinator: "Coordenador",

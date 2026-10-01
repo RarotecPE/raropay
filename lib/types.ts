@@ -175,7 +175,7 @@ export const expenseTypeLabels: Record<ExpenseType, string> = {
   reimbursement: 'Reembolso',
 }
 
-export const categoryLabels: Record<ExpenseCategory, string> = {
+export const categoryLabels: Record<string, string> = {
   accommodation: 'Hospedagem',
   food: 'Alimentação',
   fuel: 'Combustível',
@@ -184,6 +184,7 @@ export const categoryLabels: Record<ExpenseCategory, string> = {
   office_supplies: 'Itens de Escritório',
   meal_voucher: 'Vale-Refeição',
   transport_voucher: 'Vale-Transporte',
+  travel: 'Viagem',
   other: 'Outras Despesas',
 }
 
@@ -202,15 +203,17 @@ export const statusLabels: Record<ExpenseStatus, string> = {
   rejected: 'Rejeitada',
   correction: 'Em Correção',
   analysis: 'Em Análise',
-  }
+}
 
 export const roleLabels: Record<string, string> = {
   employee: 'Funcionário',
   manager: 'Gestor',
   director: 'Diretoria Financeira',
   admin: 'Administrador',
+  financial: 'Financeiro',
   finance: 'Financeiro',
-  }
+  coordinator: 'Coordenador',
+}
 
 export const locationTypeLabels: Record<LocationType, string> = {
   capital: 'Capital',

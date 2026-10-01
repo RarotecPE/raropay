@@ -31,7 +31,8 @@ import {
   CalendarDays,
   Package,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Bus
 } from "lucide-react"
 import {
   AlertDialog,
@@ -108,9 +109,10 @@ export interface ExpenseData {
   arrival_state?: string
   stops?: any[]
   is_irregular_route?: boolean
-  // Deslocamento
+  // Deslocamento / Vale-Transporte
   transport_type?: string
   transport_mode?: string
+  transport_voucher_type?: string
   origin?: string
   destination?: string
   distance_km?: number
@@ -169,9 +171,11 @@ interface ExpenseCardProps {
 function getCategoryIcon(category: string) {
   switch (category) {
     case 'accommodation': return <BedDouble className="h-4 w-4" />
-    case 'food': return <Utensils className="h-4 w-4" />
+    case 'food':
+    case 'meal_voucher': return <Utensils className="h-4 w-4" />
     case 'fuel': return <Fuel className="h-4 w-4" />
     case 'transport': return <Car className="h-4 w-4" />
+    case 'transport_voucher': return <Bus className="h-4 w-4" />
     case 'parking': return <ParkingCircle className="h-4 w-4" />
     case 'office_supplies': return <Paperclip className="h-4 w-4" />
     default: return <FileText className="h-4 w-4" />
@@ -434,6 +438,7 @@ export function ExpenseCard({
         )
 
       case 'food':
+      case 'meal_voucher':
         // Calcular pessoas vinculadas
         const totalPessoasRefeicao = 1 + (expense.linked_employees?.length || 0) + (expense.linked_external_parties?.length || 0)
         const mediaPorPessoaRefeicao = totalPessoasRefeicao > 0 ? expense.amount / totalPessoasRefeicao : expense.amount
@@ -603,31 +608,61 @@ export function ExpenseCard({
         )
 
       case 'transport':
+      case 'transport_voucher':
+      case 'travel':
         // Labels para o meio de transporte
         const transportModeLabels: Record<string, string> = {
           'uber': 'Uber',
+          '99': '99',
           '99pop': '99 Pop',
           'taxi': 'Táxi',
           'bus': 'Ônibus',
+          'onibus': 'Ônibus',
           'plane': 'Avião',
           'airplane': 'Avião',
+          'aviao': 'Avião',
           'motorcycle_app': 'Mototáxi App',
           'rental_car': 'Carro Alugado',
+          'alugado': 'Carro Alugado',
           'own_car': 'Carro Próprio',
+          'proprio': 'Carro Próprio',
           'company_car': 'Carro da Empresa',
+          'frota': 'Carro da Frota',
           'metro': 'Metrô',
           'train': 'Trem',
           'boat': 'Barco/Balsa',
           'other': 'Outro'
         }
-        // Labels para tipo de trajeto
+        // Labels para tipo de trajeto / motivo
         const transportTypeLabels: Record<string, string> = {
           'metropolitan': 'Metropolitano',
           'intermunicipal': 'Intermunicipal',
-          'interstate': 'Interestadual'
+          'interstate': 'Interestadual',
+          'visita_cliente': 'Visita a Cliente',
+          'reuniao': 'Reunião',
+          'entrega': 'Entrega',
+          'coleta': 'Coleta',
+          'viagem_trabalho': 'Viagem a Trabalho',
+          'deslocamento_diario': 'Deslocamento Diário',
+          'outro': 'Outro',
+        }
+        // Labels para categoria de vale-transporte
+        const transportVoucherTypeLabels: Record<string, string> = {
+          'fuel': 'Combustível',
+          'app': 'Deslocamento por aplicativo',
+          'public': 'Transporte público',
         }
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            {expense.transport_voucher_type && (
+              <div className="flex items-start gap-2">
+                <Bus className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-muted-foreground text-xs">Modalidade</p>
+                  <p className="font-medium">{transportVoucherTypeLabels[expense.transport_voucher_type] || expense.transport_voucher_type}</p>
+                </div>
+              </div>
+            )}
             {expense.transport_mode && (
               <div className="flex items-start gap-2">
                 <Car className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />

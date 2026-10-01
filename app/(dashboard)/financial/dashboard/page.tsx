@@ -82,8 +82,14 @@ interface FinancialStats {
 
 const settlementTypeLabels: Record<string, string> = {
   corporate_card: 'Cartão Corporativo',
+  cartao_corporativo: 'Cartão Corporativo',
   reimbursement: 'Reembolso',
+  refund: 'Reembolso',
+  reembolso: 'Reembolso',
   advance: 'Adiantamento',
+  adiantamento: 'Adiantamento',
+  mixed: 'Misto',
+  misto: 'Misto',
 }
 
 const settlementTypeIcons: Record<string, typeof CreditCard> = {

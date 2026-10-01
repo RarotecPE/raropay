@@ -45,7 +45,7 @@ const roleLabels: Record<string, string> = {
   admin: "Administrador",
   manager: "Gestor",
   financial: "Financeiro",
-  director: "Diretoria",
+  director: "Diretoria Financeira",
   coordinator: "Coordenador",
   employee: "Funcionário",
 }

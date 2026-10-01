@@ -223,6 +223,8 @@ export default function ReportsPage() {
         parking: "Estacionamento",
         office_supplies: "Itens de Escritório",
         meal_voucher: "Vale-Refeição",
+        transport_voucher: "Vale-Transporte",
+        travel: "Viagem",
         other: "Outras Despesas",
       }
 

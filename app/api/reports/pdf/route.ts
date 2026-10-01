@@ -51,21 +51,32 @@ export async function GET(request: NextRequest) {
       parking: "Estacionamento",
       office_supplies: "Itens de Escritório",
       meal_voucher: "Vale-Refeição",
+      transport_voucher: "Vale-Transporte",
+      travel: "Viagem",
       other: "Outras Despesas",
     }
 
     const typeLabels: Record<string, string> = {
       corporate_card: "Cartão Corporativo",
+      cartao_corporativo: "Cartão Corporativo",
       advance: "Adiantamento",
+      adiantamento: "Adiantamento",
       refund: "Reembolso",
+      reimbursement: "Reembolso",
+      reembolso: "Reembolso",
     }
 
     const statusLabels: Record<string, string> = {
       draft: "Rascunho",
       processed: "Processada",
       pending: "Pendente",
-      approved: "Aprovado",
-      rejected: "Rejeitado",
+      submitted: "Enviada",
+      enviada: "Enviada",
+      analysis: "Em Análise",
+      approved: "Aprovada",
+      aprovada: "Aprovada",
+      rejected: "Rejeitada",
+      rejeitada: "Rejeitada",
       correction: "Em Correção",
     }
 

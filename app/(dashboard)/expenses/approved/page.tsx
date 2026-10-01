@@ -482,8 +482,14 @@ export default function ApprovedExpensesPage() {
   function getSettlementTypeLabel(type: string) {
     const labels: Record<string, string> = {
       'reimbursement': 'Reembolso',
+      'refund': 'Reembolso',
+      'reembolso': 'Reembolso',
       'corporate_card': 'Cartão Corporativo',
+      'cartao_corporativo': 'Cartão Corporativo',
       'advance': 'Adiantamento',
+      'adiantamento': 'Adiantamento',
+      'mixed': 'Misto',
+      'misto': 'Misto',
     }
     return labels[type] || type
   }

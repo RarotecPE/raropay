@@ -56,7 +56,7 @@ import {
   Trash2,
   Pencil
 } from 'lucide-react'
-import { formatCurrency, formatDate, getCategoryLabel } from '@/lib/format'
+import { formatCurrency, formatDate, getCategoryLabel, getExpenseTypeLabel, getStatusLabel } from '@/lib/format'
 
 interface Batch {
   id: number
@@ -993,8 +993,16 @@ if (res.ok) {
         return <Badge variant="destructive">Rejeitada</Badge>
       case 'correction':
         return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 dark:border dark:border-orange-800/60">Em Correção</Badge>
+      case 'analysis':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/60">Em Análise</Badge>
+      case 'submitted':
+        return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/60">Enviada</Badge>
+      case 'processed':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/60">Processada</Badge>
+      case 'draft':
+        return <Badge variant="outline">Rascunho</Badge>
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline">{getStatusLabel(status)}</Badge>
     }
   }
 
@@ -1862,9 +1870,7 @@ if (res.ok) {
                             </Badge>
                             {expense.expense_type && (
                               <Badge variant="secondary" className="text-xs">
-                                {expense.expense_type === 'corporate_card' ? 'Cartão Corp.' : 
-                                 expense.expense_type === 'advance' ? 'Adiantamento' : 
-                                 expense.expense_type === 'refund' ? 'Reembolso' : expense.expense_type}
+                                {getExpenseTypeLabel(expense.expense_type)}
                               </Badge>
                             )}
                           </div>

@@ -36,7 +36,7 @@ import {
   Send,
   Filter
 } from 'lucide-react'
-import { formatCurrency, formatDate } from '@/lib/format'
+import { formatCurrency, formatDate, getStatusLabel } from '@/lib/format'
 
 interface Batch {
   id: number
@@ -216,8 +216,16 @@ export default function BatchHistoryPage() {
         return <Badge variant="destructive">Rejeitada</Badge>
       case 'correction':
         return <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 dark:border dark:border-orange-800/50">Correção Solicitada</Badge>
+      case 'analysis':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/50">Em Análise</Badge>
+      case 'submitted':
+        return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800/50">Enviada</Badge>
+      case 'processed':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800/50">Processada</Badge>
+      case 'draft':
+        return <Badge variant="outline">Rascunho</Badge>
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline">{getStatusLabel(status)}</Badge>
     }
   }
 
