@@ -2246,7 +2246,6 @@ is_capital: locationType === 'capital',
                         value={exp.value ? formatCurrency(exp.value) : ''}
                         onChange={(e) => updateExtraExpense(exp.id, 'value', parseCurrency(formatCurrencyInput(e.target.value)))}
                         className="w-full sm:w-32 h-11 sm:h-10 text-base sm:text-sm"
-                        className="w-32"
                       />
                       <Button type="button" variant="ghost" size="icon" onClick={() => removeExtraExpense(exp.id)}>
                         <Trash2 className="w-4 h-4 text-destructive" />
