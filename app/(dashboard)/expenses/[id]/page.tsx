@@ -1602,7 +1602,7 @@ return (
                   <DetailItem icon={Calendar} label="Data" value={expense.expense_date ? formatDate(expense.expense_date) : null} />
                   {/* Removido: is_round_trip não é mais usado */}
                   <DetailItem icon={Route} label="Distância" value={expense.distance_km ? `${Number(expense.distance_km).toLocaleString('pt-BR')} km` : null} />
-                  <DetailItem icon={FileText} label="Tipo do Trajeto" value={expense.trip_type ? (tripTypeLabels[expense.trip_type] || expense.trip_type) : expense.purchase_reason} />
+                  <DetailItem icon={FileText} label="Tipo do Trajeto" value={expense.trip_type ? (globalTripTypeLabels[expense.trip_type] || expense.trip_type) : expense.purchase_reason} />
                   {expense.municipality && (
                     <DetailItem icon={MapPin} label="Localização" value={`${expense.municipality}${expense.state ? `/${expense.state}` : ''}`} />
                   )}
