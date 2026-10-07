@@ -41,11 +41,12 @@ const HeaderIconButton = React.forwardRef<HTMLButtonElement, HeaderIconButtonPro
     <button
       ref={ref}
       type={type}
-      title={title}
       className={cn(
-        "relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-card/80 text-muted-foreground shadow-xs outline-none transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-cyan-400/45 dark:hover:bg-slate-800 dark:hover:text-white [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
         className
       )}
+      aria-label={title}
+      title={title}
       {...props}
     >
       {children}
@@ -171,18 +172,17 @@ export function NotificationsMenu() {
     }
   }, [fetchNotifications])
 
-  // Marcar item individual como lido
+  // Marcar item individual como lido ao navegar
   const handleItemClick = async (item: NotificationItem) => {
-    if (!item.isRead && item.category === "event") {
+    if (item.category === "event") {
       try {
         await fetch("/api/notifications", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ notificationId: item.id }),
         })
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
-        )
+        // Faz a mensagem sumir
+        setNotifications((prev) => prev.filter((n) => n.id !== item.id))
         setUnreadCount((prev) => Math.max(0, prev - 1))
       } catch (err) {
         console.error("Erro ao marcar lida:", err)
@@ -192,7 +192,7 @@ export function NotificationsMenu() {
     router.push(item.link)
   }
 
-  // Marcar item individual informativo como lido sem redirecionar
+  // Marcar item individual informativo como lido (faz a mensagem sumir)
   const handleMarkOneAsRead = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     e.preventDefault()
@@ -202,9 +202,8 @@ export function NotificationsMenu() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationId: id }),
       })
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      )
+      // Faz a notificação sumir imediatamente
+      setNotifications((prev) => prev.filter((n) => n.id !== id))
       setUnreadCount((prev) => Math.max(0, prev - 1))
       toast.success("Notificação marcada como lida")
     } catch (err) {
@@ -213,18 +212,21 @@ export function NotificationsMenu() {
     }
   }
 
-  // Marcar todas como lidas
+  // Marcar todas as informativas como lidas (faz todas as informativas sumirem)
   const handleMarkAllAsRead = async () => {
     try {
-      const currentIds = notifications.map((n) => n.id)
+      const eventIds = notifications.filter((n) => n.category === "event").map((n) => n.id)
+      if (eventIds.length === 0) return
+
       await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markAll: true, currentIds }),
+        body: JSON.stringify({ markAll: true, currentIds: eventIds }),
       })
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
-      setUnreadCount(notifications.filter((n) => n.category === "actionable").length)
-      toast.success("Notificações marcadas como lidas")
+      // Remove todas as notificações informativas da lista
+      setNotifications((prev) => prev.filter((n) => n.category !== "event"))
+      setUnreadCount((prev) => Math.max(0, prev - eventIds.length))
+      toast.success("Notificações informativas marcadas como lidas")
     } catch {
       toast.error("Erro ao marcar notificações")
     }
@@ -234,9 +236,9 @@ export function NotificationsMenu() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <HeaderIconButton title="Notificações" className="relative">
-          <Bell className="h-4 w-4" />
+          <Bell className="h-4 w-4 text-slate-700 dark:text-white" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground animate-in fade-in zoom-in">
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground animate-in fade-in zoom-in pointer-events-none shadow-xs">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -253,14 +255,14 @@ export function NotificationsMenu() {
               </Badge>
             )}
           </div>
-          {notifications.some((n) => !n.isRead && n.category === "event") && (
+          {notifications.some((n) => n.category === "event") && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleMarkAllAsRead}
-              className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
+              className="h-7 text-xs text-muted-foreground hover:text-foreground px-2 cursor-pointer"
             >
-              <CheckCheck className="h-3.5 w-3.5 mr-1" />
+              <CheckCheck className="h-3.5 w-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
               Marcar todas
             </Button>
           )}
@@ -337,12 +339,12 @@ export function NotificationsMenu() {
                         </Badge>
 
                         <div className="flex items-center gap-1.5">
-                          {!item.isRead && item.category === "event" && (
+                          {item.category === "event" && (
                             <button
                               type="button"
-                              title="Marcar como lida"
+                              title="Marcar como lida e dispensar"
                               onClick={(e) => handleMarkOneAsRead(e, item.id)}
-                              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-background border border-border/60 hover:border-border transition-colors shadow-2xs"
+                              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-background border border-border/60 hover:border-border transition-colors shadow-2xs cursor-pointer"
                             >
                               <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                               <span>Marcar como lida</span>

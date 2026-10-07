@@ -297,8 +297,8 @@ export function DashboardHeaderActions({ user }: { user?: HeaderUser | null }) {
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <ThemeToggle />
       <NotificationsMenu />
+      <ThemeToggle />
       <ApplicationsMenu />
       <AccountMenu user={activeUser} />
     </div>

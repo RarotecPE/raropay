@@ -106,10 +106,10 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
   const isManagerOrCoord = ['manager', 'coordinator'].includes(user.role)
 
   // ==========================================
-  // 1. NOTIFICAÇÕES DO COLABORADOR (SOLICITANTE)
+  // NOTIFICAÇÕES PESSOAIS DO USUÁRIO
   // ==========================================
 
-  // 1.1 Despesas em Correção (Pendência ativa)
+  // 1.1 Despesas em Correção (Solicitação de ajuste direcionada ao usuário)
   const correctionExpenses = (await sql`
     SELECT id, description, amount, updated_at
     FROM expenses
@@ -120,6 +120,7 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
 
   for (const exp of correctionExpenses) {
     const id = `exp-correction-${exp.id}`
+    const isRead = readState.readIds.includes(id) || (readState.lastReadAt ? new Date(exp.updated_at) <= new Date(readState.lastReadAt) : false)
     items.push({
       id,
       type: 'correction',
@@ -129,12 +130,12 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
       category: 'actionable',
       badgeText: 'Correção',
       badgeVariant: 'destructive',
-      isRead: false, // Pendências ativas exigem resolução
+      isRead,
       createdAt: exp.updated_at ? new Date(exp.updated_at).toISOString() : new Date().toISOString(),
     })
   }
 
-  // 1.2 Dúvida / Esclarecimento em Adiantamento (Pendência ativa)
+  // 1.2 Dúvida / Esclarecimento em Adiantamento (Solicitação direcionada ao usuário)
   const clarificationAdvances = (await sql`
     SELECT id, amount, review_note, updated_at
     FROM advance_requests
@@ -145,6 +146,7 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
 
   for (const adv of clarificationAdvances) {
     const id = `adv-clarification-${adv.id}`
+    const isRead = readState.readIds.includes(id) || (readState.lastReadAt ? new Date(adv.updated_at) <= new Date(readState.lastReadAt) : false)
     items.push({
       id,
       type: 'advance_clarification',
@@ -154,12 +156,12 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
       category: 'actionable',
       badgeText: 'Dúvida',
       badgeVariant: 'amber',
-      isRead: false,
+      isRead,
       createdAt: adv.updated_at ? new Date(adv.updated_at).toISOString() : new Date().toISOString(),
     })
   }
 
-  // 1.3 Desfecho de Adiantamento - Aprovado ou Rejeitado (Evento informativo, últimos 30 dias)
+  // 1.3 Desfecho de Adiantamento - Aprovado ou Rejeitado (Últimos 30 dias)
   const finishedAdvances = (await sql`
     SELECT id, amount, status, review_note, updated_at
     FROM advance_requests
@@ -172,9 +174,12 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
 
   for (const adv of finishedAdvances) {
     const id = `adv-status-${adv.id}-${adv.status}`
-    const isApproved = adv.status === 'approved'
     const isRead = readState.readIds.includes(id) || (readState.lastReadAt ? new Date(adv.updated_at) <= new Date(readState.lastReadAt) : false)
 
+    // Se já foi lida, não exibe mais no sino (marcar como lida faz a mensagem sumir)
+    if (isRead) continue
+
+    const isApproved = adv.status === 'approved'
     items.push({
       id,
       type: 'advance_status',
@@ -186,17 +191,17 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
       category: 'event',
       badgeText: isApproved ? 'Aprovado' : 'Rejeitado',
       badgeVariant: isApproved ? 'emerald' : 'destructive',
-      isRead,
+      isRead: false,
       createdAt: adv.updated_at ? new Date(adv.updated_at).toISOString() : new Date().toISOString(),
     })
   }
 
-  // 1.4 Desfecho ou Andamento de Remessas (Evento informativo, últimos 30 dias)
+  // 1.4 Desfecho de Prestações de Contas / Remessas (Aprovada ou Rejeitada - Últimos 30 dias)
   const batchEvents = (await sql`
     SELECT id, total_amount, status, updated_at
     FROM expense_batches
     WHERE user_id = ${user.id}
-      AND status IN ('approved', 'rejected', 'in_progress', 'analysis')
+      AND status IN ('approved', 'rejected')
       AND updated_at >= NOW() - INTERVAL '30 days'
     ORDER BY updated_at DESC
     LIMIT 10
@@ -204,21 +209,15 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
 
   for (const batch of batchEvents) {
     const id = `batch-status-${batch.id}-${batch.status}`
-    let title = 'Remessa em Análise'
-    let badgeText = 'Em Análise'
-    let badgeVariant: NotificationItem['badgeVariant'] = 'blue'
-
-    if (batch.status === 'approved') {
-      title = 'Prestação de Contas Aprovada'
-      badgeText = 'Aprovada'
-      badgeVariant = 'emerald'
-    } else if (batch.status === 'rejected') {
-      title = 'Prestação de Contas Rejeitada'
-      badgeText = 'Rejeitada'
-      badgeVariant = 'destructive'
-    }
-
     const isRead = readState.readIds.includes(id) || (readState.lastReadAt ? new Date(batch.updated_at) <= new Date(readState.lastReadAt) : false)
+
+    // Se já foi lida, não exibe mais no sino (marcar como lida faz a mensagem sumir)
+    if (isRead) continue
+
+    const isApproved = batch.status === 'approved'
+    const title = isApproved ? 'Prestação de Contas Aprovada' : 'Prestação de Contas Rejeitada'
+    const badgeText = isApproved ? 'Aprovada' : 'Rejeitada'
+    const badgeVariant: NotificationItem['badgeVariant'] = isApproved ? 'emerald' : 'destructive'
 
     items.push({
       id,
@@ -229,18 +228,18 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
       category: 'event',
       badgeText,
       badgeVariant,
-      isRead,
+      isRead: false,
       createdAt: batch.updated_at ? new Date(batch.updated_at).toISOString() : new Date().toISOString(),
     })
   }
 
   // ==========================================
-  // 2. NOTIFICAÇÕES PARA GESTÃO E FINANCEIRO
+  // 2. NOTIFICAÇÕES OPERACIONAIS (GESTÃO E FINANCEIRO)
   // ==========================================
   if (isFinancialOrAdmin || isManagerOrCoord) {
     const deptFilter = isFinancialOrAdmin ? null : user.department
 
-    // 2.1 Adiantamentos Pendentes de Análise (Pendência ativa)
+    // 2.1 Adiantamentos Pendentes de Análise (Ação operacional)
     const pendingAdvances = (await sql`
       SELECT ar.id, ar.amount, ar.reason, ar.created_at, u.name as employee_name, u.department
       FROM advance_requests ar
@@ -267,7 +266,7 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
       })
     }
 
-    // 2.2 Prestações de Contas / Remessas Enviadas (Pendência ativa)
+    // 2.2 Prestações de Contas / Remessas Enviadas para Conferência (Ação operacional)
     const pendingBatches = (await sql`
       SELECT eb.id, eb.total_amount, eb.created_at, u.name as employee_name, u.department
       FROM expense_batches eb
@@ -294,7 +293,7 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
       })
     }
 
-    // 2.3 Solicitações de Revisão de Fatura de Cartão (Pendência ativa)
+    // 2.3 Solicitações de Revisão de Fatura de Cartão (Ação operacional)
     try {
       const pendingRevisions = (await sql`
         SELECT iar.id, iar.status, iar.created_at, u.name as employee_name, u.department
@@ -322,7 +321,7 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
         })
       }
     } catch {
-      // Caso a tabela não exista ou esteja vazia, ignora sem quebrar
+      // Ignora caso a tabela não exista em algum ambiente
     }
   }
 
@@ -339,4 +338,6 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
     actionableCount,
   }
 }
+
+
 
