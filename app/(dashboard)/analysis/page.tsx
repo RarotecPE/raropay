@@ -1805,7 +1805,7 @@ if (res.ok) {
       <Dialog open={correctionModalOpen} onOpenChange={setCorrectionModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-orange-600">
+            <DialogTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
               <Edit3 className="w-5 h-5" />
               Solicitar Correção
             </DialogTitle>
@@ -1844,7 +1844,7 @@ if (res.ok) {
                   <Spinner className="w-6 h-6" />
                 </div>
               ) : selectedBatch && batchExpenses[selectedBatch.id] ? (
-                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2 dark:border-slate-800">
                   {batchExpenses[selectedBatch.id].map((expense) => {
                     const isSelected = selectedExpensesForCorrection.has(expense.id)
                     return (
@@ -1852,7 +1852,7 @@ if (res.ok) {
                         key={expense.id} 
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected 
-                            ? 'bg-orange-50 border-orange-300' 
+                            ? 'bg-orange-50 border-orange-300 dark:bg-orange-950/40 dark:border-orange-600/70' 
                             : 'hover:bg-muted/50'
                         }`}
                         onClick={() => toggleExpenseForCorrection(expense.id)}
@@ -1861,11 +1861,16 @@ if (res.ok) {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => {}}
-                          className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                          className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500 dark:bg-slate-900 dark:border-slate-700 dark:accent-orange-600"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                isSelected ? 'border-orange-300 dark:border-orange-600/50 dark:text-orange-300 dark:bg-orange-950/30' : ''
+                              }`}
+                            >
                               {getCategoryLabel(expense.category)}
                             </Badge>
                             {expense.expense_type && (
@@ -1879,7 +1884,7 @@ if (res.ok) {
                             {expense.description && ` - ${expense.description}`}
                           </p>
                         </div>
-                        <p className="font-semibold">{formatCurrency(expense.amount)}</p>
+                        <p className="font-semibold text-foreground">{formatCurrency(expense.amount)}</p>
                       </div>
                     )
                   })}
@@ -1891,7 +1896,7 @@ if (res.ok) {
               )}
               
               {selectedExpensesForCorrection.size > 0 && (
-                <p className="text-sm text-orange-600 font-medium">
+                <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">
                   {selectedExpensesForCorrection.size} despesa(s) selecionada(s) para correção
                 </p>
               )}
@@ -1929,7 +1934,7 @@ if (res.ok) {
       <Dialog open={approveAllModalOpen} onOpenChange={setApproveAllModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
+            <DialogTitle className="flex items-center gap-2 text-green-600 dark:text-emerald-400">
               <CheckCircle2 className="w-5 h-5" />
               Aprovar Despesas
             </DialogTitle>
@@ -1967,7 +1972,7 @@ if (res.ok) {
                   <Spinner className="w-6 h-6" />
                 </div>
               ) : selectedBatch && batchExpenses[selectedBatch.id] ? (
-                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2 dark:border-slate-800">
                   {batchExpenses[selectedBatch.id]
                     .filter(e => e.status !== 'approved' && e.status !== 'rejected' && e.status !== 'correction')
                     .map((expense) => {
@@ -1977,7 +1982,7 @@ if (res.ok) {
                         key={expense.id} 
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected 
-                            ? 'bg-green-50 border-green-300' 
+                            ? 'bg-green-50 border-green-300 dark:bg-emerald-950/40 dark:border-emerald-600/70' 
                             : 'hover:bg-muted/50'
                         }`}
                         onClick={() => toggleExpenseForApprove(expense.id)}
@@ -1986,11 +1991,16 @@ if (res.ok) {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => {}}
-                          className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 dark:bg-slate-900 dark:border-slate-700 dark:accent-emerald-600"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                isSelected ? 'border-green-300 dark:border-emerald-600/50 dark:text-emerald-300 dark:bg-emerald-950/30' : ''
+                              }`}
+                            >
                               {getCategoryLabel(expense.category)}
                             </Badge>
                           </div>
@@ -1999,7 +2009,7 @@ if (res.ok) {
                             {expense.description && ` - ${expense.description}`}
                           </p>
                         </div>
-                        <p className="font-semibold">{formatCurrency(expense.amount)}</p>
+                        <p className="font-semibold text-foreground">{formatCurrency(expense.amount)}</p>
                       </div>
                     )
                   })}
@@ -2011,7 +2021,7 @@ if (res.ok) {
               )}
               
               {selectedExpensesForApprove.size > 0 && (
-                <p className="text-sm text-green-600 font-medium">
+                <p className="text-sm text-green-600 dark:text-emerald-400 font-medium">
                   {selectedExpensesForApprove.size} despesa(s) selecionada(s) para aprovação
                 </p>
               )}
@@ -2038,7 +2048,7 @@ if (res.ok) {
       <Dialog open={rejectAllModalOpen} onOpenChange={setRejectAllModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <XCircle className="w-5 h-5" />
               Rejeitar Despesas
             </DialogTitle>
@@ -2076,7 +2086,7 @@ if (res.ok) {
                   <Spinner className="w-6 h-6" />
                 </div>
               ) : selectedBatch && batchExpenses[selectedBatch.id] ? (
-                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-lg p-2 dark:border-slate-800">
                   {batchExpenses[selectedBatch.id]
                     .filter(e => e.status !== 'approved' && e.status !== 'rejected' && e.status !== 'correction')
                     .map((expense) => {
@@ -2086,7 +2096,7 @@ if (res.ok) {
                         key={expense.id} 
                         className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                           isSelected 
-                            ? 'bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-800/60' 
+                            ? 'bg-red-50 border-red-300 dark:bg-red-950/40 dark:border-red-600/70' 
                             : 'hover:bg-muted/50'
                         }`}
                         onClick={() => toggleExpenseForReject(expense.id)}
@@ -2095,11 +2105,16 @@ if (res.ok) {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => {}}
-                          className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                          className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 dark:bg-slate-900 dark:border-slate-700 dark:accent-red-600"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                isSelected ? 'border-red-300 dark:border-red-600/50 dark:text-red-300 dark:bg-red-950/30' : ''
+                              }`}
+                            >
                               {getCategoryLabel(expense.category)}
                             </Badge>
                           </div>
@@ -2108,7 +2123,7 @@ if (res.ok) {
                             {expense.description && ` - ${expense.description}`}
                           </p>
                         </div>
-                        <p className="font-semibold">{formatCurrency(expense.amount)}</p>
+                        <p className="font-semibold text-foreground">{formatCurrency(expense.amount)}</p>
                       </div>
                     )
                   })}
@@ -2120,7 +2135,7 @@ if (res.ok) {
               )}
               
               {selectedExpensesForReject.size > 0 && (
-                <p className="text-sm text-red-600 font-medium">
+                <p className="text-sm text-red-600 dark:text-red-400 font-medium">
                   {selectedExpensesForReject.size} despesa(s) selecionada(s) para rejeição
                 </p>
               )}
