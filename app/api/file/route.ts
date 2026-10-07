@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth'
+import { getSession, canViewAllExpenses, canApproveExpenses } from '@/lib/auth'
 import { getFile } from '@/lib/r2-storage'
+import { sql } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   const session = await getSession()
@@ -10,13 +11,33 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const pathname = request.nextUrl.searchParams.get('pathname')
+    const rawPath = request.nextUrl.searchParams.get('pathname')
 
-    if (!pathname) {
+    if (!rawPath) {
       return NextResponse.json({ error: 'Pathname nao informado' }, { status: 400 })
     }
 
-    const result = await getFile(pathname)
+    const cleanPath = rawPath.replace(/^\/+/, "")
+
+    // Gestores e financeiro (admin, director, financial, manager) têm acesso a todos os arquivos
+    const isManager = canViewAllExpenses(session.role) || canApproveExpenses(session.role)
+    if (!isManager) {
+      const isOwnReceipt = cleanPath.startsWith(`receipts/${session.id}/`) || cleanPath.startsWith(`${session.id}/`)
+      if (!isOwnReceipt) {
+        // Validação no banco de dados se a despesa pertence ao usuário logado
+        const expenses = await sql`
+          SELECT id FROM expenses 
+          WHERE user_id = ${session.id} 
+            AND (receipt_url LIKE ${'%' + cleanPath} OR receipt_url = ${rawPath})
+          LIMIT 1
+        `
+        if (expenses.length === 0) {
+          return NextResponse.json({ error: 'Acesso negado a este arquivo' }, { status: 403 })
+        }
+      }
+    }
+
+    const result = await getFile(cleanPath)
 
     if (!result) {
       return new NextResponse('Arquivo nao encontrado', { status: 404 })
