@@ -2,6 +2,18 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getSession, canViewAllExpenses } from '@/lib/auth'
 
+function safeJson(val: any) {
+  if (!val) return null
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val)
+    } catch {
+      return val
+    }
+  }
+  return val
+}
+
 // Listar despesas
 export async function GET(request: NextRequest) {
   try {
@@ -319,17 +331,17 @@ export async function POST(request: NextRequest) {
         ${is_capital || false}, ${has_breakfast || false}, ${nights_count || null},
         ${single_room_qty || null}, ${single_room_value || null}, ${double_room_qty || null}, ${double_room_value || null},
         ${triple_room_qty || null}, ${triple_room_value || null}, 
-        ${extra_expenses ? JSON.stringify(extra_expenses) : null}, 
-        ${linked_employees ? JSON.stringify(linked_employees) : null},
-        ${linked_external_parties ? JSON.stringify(linked_external_parties) : null},
+        ${safeJson(extra_expenses) ? sql.json(safeJson(extra_expenses)) : null}, 
+        ${safeJson(linked_employees) ? sql.json(safeJson(linked_employees)) : null},
+        ${safeJson(linked_external_parties) ? sql.json(safeJson(linked_external_parties)) : null},
         ${meal_type || null}, ${meal_time || null}, ${establishment_name || null}, ${establishment_cnpj || null}, ${number_of_people || null},
         ${vehicle_id || null}, ${vehicle_plate || null}, ${km_before || null}, ${km_after || null}, ${total_km || calculatedTotalKm}, ${liters || null},
         ${fuel_type || null}, ${gas_station_name || null}, ${calculatedKmPerLiter},
-        ${trip_type || null}, ${departure_city || null}, ${departure_state || null}, ${arrival_city || null}, ${arrival_state || null}, ${stops ? JSON.stringify(stops) : null}, ${is_round_trip || false}, ${is_irregular_route || false}, ${odometer_photos ? JSON.stringify(odometer_photos) : null},
+        ${trip_type || null}, ${departure_city || null}, ${departure_state || null}, ${arrival_city || null}, ${arrival_state || null}, ${safeJson(stops) ? sql.json(safeJson(stops)) : null}, ${is_round_trip || false}, ${is_irregular_route || false}, ${safeJson(odometer_photos) ? sql.json(safeJson(odometer_photos)) : null},
         ${origin_lat ?? null}, ${origin_lng ?? null}, ${origin_place || null}, ${destination_lat ?? null}, ${destination_lng ?? null}, ${destination_place || null}, ${route_distance_km ?? null}, ${route_source || null},
         ${parking_name || null}, ${parking_cnpj || null}, ${parking_type || null}, ${parking_reason || null}, ${entry_time || null}, ${exit_time || null},
         ${transport_type || null}, ${transport_mode || null}, ${transport_voucher_type || null}, ${origin || null}, ${destination || null}, ${distance_km || null}, ${estimated_distance || null},
-        ${store_type || null}, ${store_name || null}, ${items ? JSON.stringify(items) : null}, ${purchase_reason || null}, ${requester || null},
+        ${store_type || null}, ${store_name || null}, ${safeJson(items) ? sql.json(safeJson(items)) : null}, ${purchase_reason || null}, ${requester || null},
         ${installments || 1}, ${current_installment || 1},
         ${made_by_self !== false}, ${made_by_employee_name || null}, ${participated !== false},
         ${payment_barcode || null}, ${pix_code || null},

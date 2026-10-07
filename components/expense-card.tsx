@@ -49,6 +49,20 @@ import { Spinner } from '@/components/ui/spinner'
 import Link from "next/link"
 import { formatCurrency, formatDate, getCategoryLabel, getExpenseTypeLabel, getStatusBadge } from "@/lib/format"
 
+function parseJsonArray<T = any>(val: any): T[] {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 // Interface expandida da despesa com todos os campos relevantes
 export interface ExpenseData {
   id: number
@@ -271,13 +285,15 @@ export function ExpenseCard({
   // Renderizar detalhes específicos por categoria
   function renderCategoryDetails() {
     switch (expense.category) {
-      case 'accommodation':
+      case 'accommodation': {
         // Calcular valores separados
-        const extras = expense.extra_expenses || []
-        const extrasNaoRefeicao = extras.filter(e => !e.isMeal)
-        const extrasRefeicao = extras.filter(e => e.isMeal)
-        const totalExtrasNaoRefeicao = extrasNaoRefeicao.reduce((sum, e) => sum + e.value, 0)
-        const totalExtrasRefeicao = extrasRefeicao.reduce((sum, e) => sum + e.value, 0)
+        const extras = parseJsonArray(expense.extra_expenses)
+        const linkedEmployees = parseJsonArray(expense.linked_employees)
+        const linkedExternalParties = parseJsonArray(expense.linked_external_parties)
+        const extrasNaoRefeicao = extras.filter((e: any) => !e.isMeal)
+        const extrasRefeicao = extras.filter((e: any) => e.isMeal)
+        const totalExtrasNaoRefeicao = extrasNaoRefeicao.reduce((sum: number, e: any) => sum + (Number(e.value) || 0), 0)
+        const totalExtrasRefeicao = extrasRefeicao.reduce((sum: number, e: any) => sum + (Number(e.value) || 0), 0)
         
         // Calcular quartos
         const quartosTotal = 
@@ -289,7 +305,7 @@ export function ExpenseCard({
         const valorParaMedia = quartosTotal + totalExtrasNaoRefeicao
         
         // Pessoas vinculadas
-        const totalPessoas = 1 + (expense.linked_employees?.length || 0) + (expense.linked_external_parties?.length || 0)
+        const totalPessoas = 1 + linkedEmployees.length + linkedExternalParties.length
         
         // Média por pessoa/diária
         const mediaPorPessoaDiaria = expense.nights_count && totalPessoas 
@@ -436,11 +452,14 @@ export function ExpenseCard({
             )}
           </div>
         )
+      }
 
       case 'food':
-      case 'meal_voucher':
+      case 'meal_voucher': {
+        const linkedEmployees = parseJsonArray(expense.linked_employees)
+        const linkedExternalParties = parseJsonArray(expense.linked_external_parties)
         // Calcular pessoas vinculadas
-        const totalPessoasRefeicao = 1 + (expense.linked_employees?.length || 0) + (expense.linked_external_parties?.length || 0)
+        const totalPessoasRefeicao = 1 + linkedEmployees.length + linkedExternalParties.length
         const mediaPorPessoaRefeicao = totalPessoasRefeicao > 0 ? expense.amount / totalPessoasRefeicao : expense.amount
         
         return (
@@ -482,11 +501,11 @@ export function ExpenseCard({
                   </div>
                 </div>
               )}
-              {expense.linked_employees && expense.linked_employees.length > 0 && (
+              {linkedEmployees.length > 0 && (
                 <div className="col-span-2 md:col-span-4">
                   <p className="text-muted-foreground text-xs mb-1">Funcionários Vinculados</p>
                   <div className="flex flex-wrap gap-1">
-                    {expense.linked_employees.map((emp: any, i: number) => (
+                    {linkedEmployees.map((emp: any, i: number) => (
                       <Badge key={i} variant="secondary" className="text-xs">
                         {emp.name || `ID: ${emp.user_id}`}
                       </Badge>
@@ -521,6 +540,7 @@ export function ExpenseCard({
             )}
           </div>
         )
+      }
 
       case 'fuel':
         return (
@@ -793,42 +813,45 @@ export function ExpenseCard({
                 </div>
               </div>
             )}
-            {expense.items && expense.items.length > 0 && (
-              <div className="col-span-2 md:col-span-4">
-                <p className="text-muted-foreground text-xs mb-1">Itens</p>
-                <div className="space-y-1">
-                  {expense.items.map((item: any, i: number) => {
-                    // Parsear totalPrice de string formatada "R$ 10,00" para número
-                    let itemTotal = 0
-                    if (item.totalPrice) {
-                      itemTotal = typeof item.totalPrice === 'string'
-                        ? Number(item.totalPrice.replace(/[^\d,.-]/g, '').replace(',', '.'))
-                        : Number(item.totalPrice)
-                    } else if (item.total) {
-                      itemTotal = Number(item.total)
-                    } else if (item.unitPrice) {
-                      // Tentar calcular do preço unitário
-                      const unitPrice = typeof item.unitPrice === 'string'
-                        ? Number(item.unitPrice.replace(/[^\d,.-]/g, '').replace(',', '.'))
-                        : Number(item.unitPrice)
-                      itemTotal = unitPrice * (item.quantity || 1)
-                    }
-                    
-                    // Se ainda não tem valor, usar valor global dividido pelos itens
-                    if (!itemTotal || isNaN(itemTotal)) {
-                      itemTotal = expense.amount / expense.items.length
-                    }
-                    
-                    return (
-                      <div key={i} className="flex items-center justify-between text-sm bg-muted/50 rounded px-2 py-1">
-                        <span>{item.quantity || 1}x {item.name || 'Item sem descrição'}</span>
-                        <span className="font-medium">{formatCurrency(itemTotal)}</span>
-                      </div>
-                    )
-                  })}
+            {(() => {
+              const items = parseJsonArray(expense.items)
+              return items.length > 0 && (
+                <div className="col-span-2 md:col-span-4">
+                  <p className="text-muted-foreground text-xs mb-1">Itens</p>
+                  <div className="space-y-1">
+                    {items.map((item: any, i: number) => {
+                      // Parsear totalPrice de string formatada "R$ 10,00" para número
+                      let itemTotal = 0
+                      if (item.totalPrice) {
+                        itemTotal = typeof item.totalPrice === 'string'
+                          ? Number(item.totalPrice.replace(/[^\d,.-]/g, '').replace(',', '.'))
+                          : Number(item.totalPrice)
+                      } else if (item.total) {
+                        itemTotal = Number(item.total)
+                      } else if (item.unitPrice) {
+                        // Tentar calcular do preço unitário
+                        const unitPrice = typeof item.unitPrice === 'string'
+                          ? Number(item.unitPrice.replace(/[^\d,.-]/g, '').replace(',', '.'))
+                          : Number(item.unitPrice)
+                        itemTotal = unitPrice * (item.quantity || 1)
+                      }
+                      
+                      // Se ainda não tem valor, usar valor global dividido pelos itens
+                      if (!itemTotal || isNaN(itemTotal)) {
+                        itemTotal = expense.amount / items.length
+                      }
+                      
+                      return (
+                        <div key={i} className="flex items-center justify-between text-sm bg-muted/50 rounded px-2 py-1">
+                          <span>{item.quantity || 1}x {item.name || 'Item sem descrição'}</span>
+                          <span className="font-medium">{formatCurrency(itemTotal)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         )
 

@@ -3,6 +3,18 @@ import { sql } from '@/lib/db'
 import { getSession, canViewAllExpenses } from '@/lib/auth'
 import { deleteFile } from '@/lib/r2-storage'
 
+function safeJson(val: any) {
+  if (!val) return null
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val)
+    } catch {
+      return val
+    }
+  }
+  return val
+}
+
 // Buscar despesa por ID
 export async function GET(
   request: NextRequest,
@@ -276,7 +288,7 @@ export async function PUT(
         arrival_city = ${arrival_city},
         arrival_state = ${arrival_state},
         distance_km = ${distance_km},
-        stops = ${stops ? JSON.stringify(stops) : null},
+        stops = ${safeJson(stops) ? sql.json(safeJson(stops)) : null},
         is_irregular_route = ${is_irregular_route},
         origin_lat = ${origin_lat},
         origin_lng = ${origin_lng},
@@ -297,7 +309,7 @@ export async function PUT(
         km_before = ${km_before},
         km_after = ${km_after},
         total_km = ${total_km},
-        odometer_photos = COALESCE(${odometer_photos ? JSON.stringify(odometer_photos) : null}, odometer_photos),
+        odometer_photos = COALESCE(${safeJson(odometer_photos) ? sql.json(safeJson(odometer_photos)) : null}, odometer_photos),
         parking_name = ${parking_name},
         parking_type = ${parking_type},
         parking_reason = ${parking_reason},

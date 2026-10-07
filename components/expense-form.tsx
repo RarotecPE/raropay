@@ -85,7 +85,7 @@ const expenseTypeIcons: Record<ExpenseType, typeof CreditCard> = {
   reimbursement: ReceiptText,
 }
 
-const categoryIcons: Record<ExpenseCategory, typeof Hotel> = {
+const categoryIcons: Record<string, typeof Hotel> = {
   accommodation: Hotel,
   food: UtensilsCrossed,
   fuel: Fuel,
@@ -94,10 +94,21 @@ const categoryIcons: Record<ExpenseCategory, typeof Hotel> = {
   office_supplies: Paperclip,
   meal_voucher: Utensils,
   transport_voucher: Bus,
+  travel: Navigation,
   other: FileText,
 }
+const formCategories: ExpenseCategory[] = [
+  'accommodation',
+  'food',
+  'fuel',
+  'transport',
+  'parking',
+  'office_supplies',
+  'meal_voucher',
+  'transport_voucher',
+  'other',
+]
 
-// Capitais brasileiras para determinar limite
 const capitalCities = [
   'Rio Branco', 'Maceió', 'Macapá', 'Manaus', 'Salvador', 'Fortaleza', 'Brasília',
   'Vitória', 'Goiânia', 'São Luís', 'Cuiabá', 'Campo Grande', 'Belo Horizonte',
@@ -2030,11 +2041,11 @@ is_capital: locationType === 'capital',
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3">
-                {(Object.keys(categoryLabels) as ExpenseCategory[])
+                {formCategories
                   .filter(cat => cat !== 'meal_voucher' || mealVoucherEnabled)
                   .filter(cat => cat !== 'transport_voucher' || transportVoucherEnabled)
                   .map((cat) => {
-                  const Icon = categoryIcons[cat]
+                  const Icon = categoryIcons[cat] || FileText
                   const isSelected = category === cat
                   return (
                     <button
