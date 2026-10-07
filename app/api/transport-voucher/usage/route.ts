@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       ORDER BY expense_date DESC
     `
 
-    const used = expenses.reduce(
+    const used = (expenses as any[]).reduce(
       (sum: number, exp: { amount: string | number }) => sum + parseFloat(String(exp.amount)),
       0,
     )

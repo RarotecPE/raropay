@@ -246,10 +246,10 @@ return (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Badge className={statusColor}>
-                    {statusLabels[expense.status] || expense.status}
+                    {(statusLabels as Record<string, string>)[expense.status] || expense.status}
                   </Badge>
                   <Badge variant="outline">
-                    {expenseTypeLabels[expense.expense_type] || expense.expense_type}
+                    {(expenseTypeLabels as Record<string, string>)[expense.expense_type] || expense.expense_type}
                   </Badge>
                 </div>
                 <h2 className="text-xl font-semibold">{categoryLabels[expense.category] || expense.category}</h2>
@@ -343,7 +343,7 @@ return (
                   <div className="w-px bg-orange-200 dark:bg-orange-700 hidden sm:block" />
                   <div className="flex flex-col items-center min-w-[120px]">
                     <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Tipo de Refeição</span>
-                    <span className="text-lg font-semibold capitalize">{expense.meal_type ? (mealTypeLabels[expense.meal_type] || expense.meal_type) : 'Não informado'}</span>
+                    <span className="text-lg font-semibold capitalize">{expense.meal_type ? ((mealTypeLabels as Record<string, string>)[expense.meal_type] || expense.meal_type) : 'Não informado'}</span>
                   </div>
                   <div className="w-px bg-orange-200 dark:bg-orange-700 hidden sm:block" />
                   <div className="flex flex-col items-center min-w-[120px]">
@@ -2175,7 +2175,7 @@ return (
                       <p className="text-sm font-medium">{entry.action}</p>
                       {entry.previous_status && entry.new_status && (
                         <p className="text-sm text-muted-foreground">
-                          {statusLabels[entry.previous_status] || entry.previous_status} → {statusLabels[entry.new_status] || entry.new_status}
+                          {(statusLabels as Record<string, string>)[entry.previous_status] || entry.previous_status} → {(statusLabels as Record<string, string>)[entry.new_status] || entry.new_status}
                         </p>
                       )}
                       {entry.notes && (

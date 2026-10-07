@@ -57,7 +57,7 @@ export async function POST(
         SELECT description, amount FROM expenses WHERE id = ANY(${addedExpenses})
       `
 
-      const expenseList = expenseDescriptions
+      const expenseList = (expenseDescriptions as any[])
         .map((expense: { description: string; amount: number }) => `- ${expense.description} (R$ ${Number(expense.amount).toFixed(2)})`)
         .join("\n")
 

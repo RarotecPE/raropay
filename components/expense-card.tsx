@@ -357,17 +357,17 @@ export function ExpenseCard({
                 <div className="col-span-2 md:col-span-4">
                   <p className="text-muted-foreground text-xs mb-1">Quartos</p>
                   <div className="flex flex-wrap gap-2">
-                    {expense.single_room_qty > 0 && (
+                    {(expense.single_room_qty ?? 0) > 0 && (
                       <Badge variant="outline">
                         {expense.single_room_qty}x Solteiro ({formatCurrency(expense.single_room_value || 0)}/diária)
                       </Badge>
                     )}
-                    {expense.double_room_qty > 0 && (
+                    {(expense.double_room_qty ?? 0) > 0 && (
                       <Badge variant="outline">
                         {expense.double_room_qty}x Casal ({formatCurrency(expense.double_room_value || 0)}/diária)
                       </Badge>
                     )}
-                    {expense.triple_room_qty > 0 && (
+                    {(expense.triple_room_qty ?? 0) > 0 && (
                       <Badge variant="outline">
                         {expense.triple_room_qty}x Triplo ({formatCurrency(expense.triple_room_value || 0)}/diária)
                       </Badge>

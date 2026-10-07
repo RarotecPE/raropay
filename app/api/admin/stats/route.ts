@@ -112,7 +112,7 @@ export async function GET() {
 
     // Converter usersByRole para objeto
     const usersByRoleObj: Record<string, number> = {}
-    usersByRole.forEach((row: { role: string, count: number }) => {
+    ;(usersByRole as any[]).forEach((row: { role: string, count: number }) => {
       usersByRoleObj[row.role] = row.count
     })
 

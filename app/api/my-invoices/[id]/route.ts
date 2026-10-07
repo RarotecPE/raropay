@@ -38,19 +38,20 @@ export async function GET(
     `
 
     // Calcular estatísticas
+    const expensesList = expenses as any[]
     const stats = {
-      total_expenses: expenses.length,
-      total_amount: expenses.reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
-      approved_count: expenses.filter((e: { status: string }) => e.status === 'approved').length,
-      approved_amount: expenses.filter((e: { status: string }) => e.status === 'approved').reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
-      pending_count: expenses.filter((e: { status: string }) => e.status === 'pending').length,
-      pending_amount: expenses.filter((e: { status: string }) => e.status === 'pending').reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
-      rejected_count: expenses.filter((e: { status: string }) => e.status === 'rejected').length,
-      rejected_amount: expenses.filter((e: { status: string }) => e.status === 'rejected').reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
+      total_expenses: expensesList.length,
+      total_amount: expensesList.reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
+      approved_count: expensesList.filter((e: { status: string }) => e.status === 'approved').length,
+      approved_amount: expensesList.filter((e: { status: string }) => e.status === 'approved').reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
+      pending_count: expensesList.filter((e: { status: string }) => e.status === 'pending').length,
+      pending_amount: expensesList.filter((e: { status: string }) => e.status === 'pending').reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
+      rejected_count: expensesList.filter((e: { status: string }) => e.status === 'rejected').length,
+      rejected_amount: expensesList.filter((e: { status: string }) => e.status === 'rejected').reduce((sum: number, e: { amount: number | string }) => sum + Number(e.amount), 0),
     }
 
     // Agrupar por categoria
-    const byCategory = expenses.reduce((acc: Record<string, { category: string; count: number; total: number }>, e: { category: string | null; amount: number | string }) => {
+    const byCategory = expensesList.reduce((acc: Record<string, { category: string; count: number; total: number }>, e: { category: string | null; amount: number | string }) => {
       const cat = e.category || 'other'
       if (!acc[cat]) {
         acc[cat] = { category: cat, count: 0, total: 0 }
@@ -64,7 +65,7 @@ export async function GET(
       invoice,
       expenses,
       stats,
-      byCategory: Object.values(byCategory).sort((a, b) => b.total - a.total)
+      byCategory: Object.values(byCategory).sort((a: any, b: any) => b.total - a.total)
     })
   } catch (error) {
     console.error("Erro ao buscar detalhes da fatura:", error)

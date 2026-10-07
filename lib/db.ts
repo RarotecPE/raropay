@@ -62,7 +62,7 @@ function getSql(): ReturnType<typeof postgres> {
     const isBuild = process.env.NEXT_PHASE === 'phase-production-build'
     if (isBuild) {
       // Stub callable que não faz nada durante build, mas falha se usado fora do build sem env
-      const dummyFn = (..._args: unknown[]) => {
+      const dummyFn: any = (..._args: unknown[]) => {
         // Durante build, retorna array vazio para não quebrar coleta de páginas
         // Em runtime sem env, lança erro explicativo
         if (process.env.NEXT_PHASE === 'phase-production-build') {
@@ -70,11 +70,8 @@ function getSql(): ReturnType<typeof postgres> {
         }
         throw new Error('DATABASE_CONNECTION não configurada')
       }
-      // @ts-expect-error - stub compatível
       dummyFn.unsafe = dummyFn
-      // @ts-expect-error
       dummyFn.begin = async () => { throw new Error('DATABASE_CONNECTION não configurada') }
-      // @ts-expect-error
       dummyFn.end = async () => {}
       return dummyFn as unknown as ReturnType<typeof postgres>
     }

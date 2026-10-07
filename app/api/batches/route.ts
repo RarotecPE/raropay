@@ -2,6 +2,18 @@ import { sql } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { getSession, canViewAllExpenses } from "@/lib/auth"
 
+function safeJson(val: any) {
+  if (!val) return null
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val)
+    } catch {
+      return val
+    }
+  }
+  return val
+}
+
 // GET - Listar remessas
 export async function GET(request: NextRequest) {
   try {
@@ -335,10 +347,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Calcular valor total
-    const totalAmount = expenses.reduce((sum: number, exp: { amount: number }) => sum + Number(exp.amount), 0)
+    const totalAmount = (expenses as any[]).reduce((sum: number, exp: { amount: number }) => sum + Number(exp.amount), 0)
 
     // Determinar tipo de liquidação baseado nas despesas
-    const expenseTypes = [...new Set(expenses.map((e: { expense_type: string }) => e.expense_type))]
+    const expenseTypes = [...new Set((expenses as any[]).map((e: { expense_type: string }) => e.expense_type))]
     let finalSettlementType = settlement_type
     if (!finalSettlementType) {
       if (expenseTypes.length === 1) {
@@ -380,8 +392,8 @@ export async function POST(request: NextRequest) {
         ${advance_received_amount || null},
         ${advance_received_date || null},
         ${refund_method || null},
-        ${payment_data ? JSON.stringify(payment_data) : null},
-        ${bankAccountData ? JSON.stringify(bankAccountData) : null},
+        ${safeJson(payment_data) ? sql.json(safeJson(payment_data)) : null},
+        ${safeJson(bankAccountData) ? sql.json(safeJson(bankAccountData)) : null},
         ${observations || null},
         ${totalAmount},
         ${expenses.length},

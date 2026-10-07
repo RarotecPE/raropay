@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     `
 
     // Calcular total usado
-    const used = expenses.reduce((sum: number, exp: { amount: string | number }) => 
+    const used = (expenses as any[]).reduce((sum: number, exp: { amount: string | number }) => 
       sum + parseFloat(String(exp.amount)), 0)
     
     const available = Math.max(0, limit - used)

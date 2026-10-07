@@ -117,6 +117,20 @@ const capitalCities = [
   'Aracaju', 'Palmas'
 ]
 
+function parseJsonArray<T = any>(val: any): T[] {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 interface LinkedPerson {
   id: string
   name: string
@@ -645,7 +659,7 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         if (expense.double_room_qty) setDoubleRoomQty(String(expense.double_room_qty))
         if (expense.triple_room_value) setTripleRoomValue(formatCurrencyInput(String(Math.round(expense.triple_room_value * 100))))
         if (expense.triple_room_qty) setTripleRoomQty(String(expense.triple_room_qty))
-        if (expense.extra_expenses) setExtraExpenses(expense.extra_expenses)
+        if (expense.extra_expenses) setExtraExpenses(parseJsonArray(expense.extra_expenses))
         // linked_persons são armazenados em linked_employees e linked_external_parties
         const linkedPersons: LinkedPerson[] = []
         if (expense.linked_employees) {
@@ -759,7 +773,7 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         setFuelAmount(formatCurrencyInput(String(Math.round((expense.amount || 0) * 100))))
         if (expense.km_before) setKmBefore(String(expense.km_before))
         if (expense.km_after) setKmAfter(String(expense.km_after))
-        if (expense.stops) setStops(expense.stops)
+        if (expense.stops) setStops(parseJsonArray(expense.stops))
         // Carregar fotos do hodômetro
         if (expense.odometer_photos && Array.isArray(expense.odometer_photos)) {
           setOdometerFiles(expense.odometer_photos)
@@ -777,24 +791,20 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         setParkingAmount(formatCurrencyInput(String(Math.round((expense.amount || 0) * 100))))
         // linked_persons são armazenados em linked_employees e linked_external_parties
         const parkingLinked: {type: 'employee' | 'third_party', user_id?: number, name?: string, cpf?: string}[] = []
-        if (expense.linked_employees) {
-          expense.linked_employees.forEach((emp: {user_id: number, name: string}) => {
-            parkingLinked.push({ type: 'employee', user_id: emp.user_id, name: emp.name })
-          })
-        }
-        if (expense.linked_external_parties) {
-          expense.linked_external_parties.forEach((party: {name: string, cpf: string}) => {
-            parkingLinked.push({ type: 'third_party', name: party.name, cpf: party.cpf })
-          })
-        }
+        parseJsonArray(expense.linked_employees).forEach((emp: any) => {
+          parkingLinked.push({ type: 'employee', user_id: emp.user_id, name: emp.name })
+        })
+        parseJsonArray(expense.linked_external_parties).forEach((party: any) => {
+          parkingLinked.push({ type: 'third_party', name: party.name, cpf: party.cpf })
+        })
         if (parkingLinked.length > 0) setParkingLinkedPersons(parkingLinked)
       }
       
       // Deslocamento / Vale-Transporte
       if (expense.category === 'transport' || expense.category === 'transport_voucher') {
-    setTransportType(expense.transport_type || '')
-    setTransportMode(expense.transport_mode || '')
-    setTransportVoucherType(expense.transport_voucher_type || '')
+        setTransportType(expense.transport_type || '')
+        setTransportMode(expense.transport_mode || '')
+        setTransportVoucherType(expense.transport_voucher_type || '')
         setTransportDate(expense.expense_date ? expense.expense_date.split('T')[0] : '')
         setTransportDepartureState(expense.departure_state || 'PE')
         setTransportDepartureCity(expense.departure_city || '')
@@ -816,16 +826,12 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         }
         // linked_persons são armazenados em linked_employees e linked_external_parties
         const transportLinked: {type: 'employee' | 'third_party', user_id?: number, name?: string, cpf?: string}[] = []
-        if (expense.linked_employees) {
-          expense.linked_employees.forEach((emp: {user_id: number, name: string}) => {
-            transportLinked.push({ type: 'employee', user_id: emp.user_id, name: emp.name })
-          })
-        }
-        if (expense.linked_external_parties) {
-          expense.linked_external_parties.forEach((party: {name: string, cpf: string}) => {
-            transportLinked.push({ type: 'third_party', name: party.name, cpf: party.cpf })
-          })
-        }
+        parseJsonArray(expense.linked_employees).forEach((emp: any) => {
+          transportLinked.push({ type: 'employee', user_id: emp.user_id, name: emp.name })
+        })
+        parseJsonArray(expense.linked_external_parties).forEach((party: any) => {
+          transportLinked.push({ type: 'third_party', name: party.name, cpf: party.cpf })
+        })
         if (transportLinked.length > 0) setTransportLinkedPersons(transportLinked)
       }
       
@@ -836,7 +842,7 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         setOfficeDate(expense.expense_date ? expense.expense_date.split('T')[0] : '')
         setOfficeStoreType(expense.store_type || '')
         setOfficeStoreName(expense.store_name || '')
-        if (expense.items) setOfficeItems(expense.items)
+        if (expense.items) setOfficeItems(parseJsonArray(expense.items))
         setOfficePurchaseReason(expense.purchase_reason || '')
         setOfficeRequester(expense.requester || '')
         setOfficeAmount(formatCurrencyInput(String(Math.round((expense.amount || 0) * 100))))
@@ -849,7 +855,7 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
         setOtherDate(expense.expense_date ? expense.expense_date.split('T')[0] : '')
         setOtherStoreType(expense.store_type || '')
         setOtherStoreName(expense.store_name || '')
-        if (expense.items) setOtherItems(expense.items)
+        if (expense.items) setOtherItems(parseJsonArray(expense.items))
         setOtherPurchaseReason(expense.purchase_reason || '')
         setOtherRequester(expense.requester || '')
         setOtherAmount(formatCurrencyInput(String(Math.round((expense.amount || 0) * 100))))
@@ -2011,7 +2017,7 @@ is_capital: locationType === 'capital',
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 {(Object.keys(expenseTypeLabels) as ExpenseType[]).map((type) => {
-                  const Icon = expenseTypeIcons[type]
+                  const Icon = expenseTypeIcons[type] || CreditCard
                   const isSelected = expenseType === type
                   return (
                     <button
