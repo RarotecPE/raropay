@@ -127,7 +127,7 @@ export default function AdvanceDetailPage() {
     d ? new Date(d).toLocaleDateString('pt-BR') : '-'
 
   return (
-    <div className="container max-w-3xl py-8 space-y-6">
+    <div className="max-w-4xl mx-auto py-8 space-y-6">
       <Button variant="ghost" size="sm" onClick={() => router.push('/advances')} className="-ml-2">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Voltar

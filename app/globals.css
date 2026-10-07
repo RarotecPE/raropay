@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@utility container {
+  margin-inline: auto;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 html {
