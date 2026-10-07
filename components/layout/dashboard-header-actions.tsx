@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils"
 import { getInitials } from "@/lib/format"
 import { roleLabels } from "@/lib/types"
 import { useAuth } from "@/components/auth-provider"
+import { NotificationsMenu } from "@/components/layout/notifications-menu"
 
 export type HeaderUser = {
   id?: number
@@ -297,6 +298,7 @@ export function DashboardHeaderActions({ user }: { user?: HeaderUser | null }) {
   return (
     <div className="flex shrink-0 items-center gap-2">
       <ThemeToggle />
+      <NotificationsMenu />
       <ApplicationsMenu />
       <AccountMenu user={activeUser} />
     </div>
