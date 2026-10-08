@@ -333,7 +333,7 @@ export async function PUT(
       VALUES (${expenseId}, ${action}, ${session.id}, ${expense.status}, ${newStatus})
     `
 
-    // Se a despesa foi corrigida, atualizar status da remessa
+    // Se a despesa foi corrigida ou pertence a uma remessa, atualizar status e total da remessa
     // A despesa usa batch_id (atual) ou original_batch_id (se foi removida da remessa)
     const batchId = expense.batch_id || expense.original_batch_id
     if (wasCorrection && batchId) {
@@ -359,14 +359,30 @@ export async function PUT(
       
       // Se não há mais despesas em correção, voltar remessa para "pending" (para análise)
       // Se ainda há, manter como "correction"
-      if (!stillHasCorrections) {
-        await sql`
-          UPDATE expense_batches SET
-            status = 'pending',
-            updated_at = NOW()
-          WHERE id = ${batchId}
-        `
-      }
+      const nextBatchStatus = !stillHasCorrections ? 'pending' : 'correction'
+      await sql`
+        UPDATE expense_batches SET
+          status = ${nextBatchStatus},
+          total_amount = (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM expenses
+            WHERE batch_id = ${batchId}
+          ),
+          updated_at = NOW()
+        WHERE id = ${batchId}
+      `
+    } else if (expense.batch_id) {
+      // Se a despesa já pertencia a uma remessa, atualizar o total da remessa
+      await sql`
+        UPDATE expense_batches SET
+          total_amount = (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM expenses
+            WHERE batch_id = ${expense.batch_id}
+          ),
+          updated_at = NOW()
+        WHERE id = ${expense.batch_id}
+      `
     }
 
     return NextResponse.json(result[0])
@@ -493,6 +509,7 @@ export async function PATCH(
         await sql`
           UPDATE expense_batches SET
             status = 'cancelled',
+            total_amount = 0,
             updated_at = NOW()
           WHERE id = ${expense.batch_id}
         `
@@ -501,6 +518,11 @@ export async function PATCH(
         await sql`
           UPDATE expense_batches SET
             status = 'approved',
+            total_amount = (
+              SELECT COALESCE(SUM(amount), 0)
+              FROM expenses
+              WHERE batch_id = ${expense.batch_id}
+            ),
             reviewed_by = ${approverId},
             reviewed_at = NOW(),
             updated_at = NOW()
@@ -511,6 +533,11 @@ export async function PATCH(
         await sql`
           UPDATE expense_batches SET
             status = 'correction',
+            total_amount = (
+              SELECT COALESCE(SUM(amount), 0)
+              FROM expenses
+              WHERE batch_id = ${expense.batch_id}
+            ),
             updated_at = NOW()
           WHERE id = ${expense.batch_id}
         `
@@ -519,6 +546,11 @@ export async function PATCH(
         await sql`
           UPDATE expense_batches SET
             status = 'pending',
+            total_amount = (
+              SELECT COALESCE(SUM(amount), 0)
+              FROM expenses
+              WHERE batch_id = ${expense.batch_id}
+            ),
             updated_at = NOW()
           WHERE id = ${expense.batch_id}
         `

@@ -81,21 +81,31 @@ function getNotificationIcon(type: NotificationItem["type"], badgeVariant?: stri
   }
 }
 
-function formatRelativeTime(dateString: string): string {
+function formatNotificationDate(dateString: string): string {
   try {
     const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMinutes = Math.floor(diffMs / (1000 * 60))
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    if (isNaN(date.getTime())) return ""
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+  } catch {
+    return ""
+  }
+}
 
-    if (diffMinutes < 1) return "Agora mesmo"
-    if (diffMinutes < 60) return `Há ${diffMinutes} min`
-    if (diffHours < 24) return `Há ${diffHours}h`
-    if (diffDays === 1) return "Ontem"
-    if (diffDays < 7) return `Há ${diffDays} dias`
-    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+function formatNotificationDateTime(dateString: string): string {
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return ""
+    return date.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   } catch {
     return ""
   }
@@ -311,8 +321,11 @@ export function NotificationsMenu() {
                             {item.title}
                           </span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                          {formatRelativeTime(item.createdAt)}
+                        <span
+                          className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0"
+                          title={formatNotificationDateTime(item.createdAt)}
+                        >
+                          {formatNotificationDate(item.createdAt)}
                         </span>
                       </div>
 

@@ -198,12 +198,20 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
 
   // 1.4 Desfecho de Prestações de Contas / Remessas (Aprovada ou Rejeitada - Últimos 30 dias)
   const batchEvents = (await sql`
-    SELECT id, total_amount, status, updated_at
-    FROM expense_batches
-    WHERE user_id = ${user.id}
-      AND status IN ('approved', 'rejected')
-      AND updated_at >= NOW() - INTERVAL '30 days'
-    ORDER BY updated_at DESC
+    SELECT 
+      eb.id, 
+      COALESCE(
+        (SELECT SUM(e.amount) FROM expenses e WHERE e.batch_id = eb.id),
+        eb.total_amount,
+        0
+      ) as total_amount, 
+      eb.status, 
+      eb.updated_at
+    FROM expense_batches eb
+    WHERE eb.user_id = ${user.id}
+      AND eb.status IN ('approved', 'rejected')
+      AND eb.updated_at >= NOW() - INTERVAL '30 days'
+    ORDER BY eb.updated_at DESC
     LIMIT 10
   `) as any[]
 
@@ -268,12 +276,21 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
 
     // 2.2 Prestações de Contas / Remessas Enviadas para Conferência (Ação operacional)
     const pendingBatches = (await sql`
-      SELECT eb.id, eb.total_amount, eb.created_at, u.name as employee_name, u.department
+      SELECT 
+        eb.id, 
+        COALESCE(
+          (SELECT SUM(e.amount) FROM expenses e WHERE e.batch_id = eb.id),
+          eb.total_amount,
+          0
+        ) as total_amount, 
+        COALESCE(eb.updated_at, eb.created_at) as notification_date,
+        u.name as employee_name, 
+        u.department
       FROM expense_batches eb
       JOIN users u ON u.id = eb.user_id
       WHERE eb.status = 'pending'
         AND (${deptFilter}::text IS NULL OR u.department = ${deptFilter})
-      ORDER BY eb.created_at DESC
+      ORDER BY COALESCE(eb.updated_at, eb.created_at) DESC
       LIMIT 10
     `) as any[]
 
@@ -289,7 +306,7 @@ export async function getNotificationsForUser(user: SessionUser): Promise<{
         badgeText: 'Remessa',
         badgeVariant: 'blue',
         isRead: false,
-        createdAt: b.created_at ? new Date(b.created_at).toISOString() : new Date().toISOString(),
+        createdAt: b.notification_date ? new Date(b.notification_date).toISOString() : new Date().toISOString(),
       })
     }
 

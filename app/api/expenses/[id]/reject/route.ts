@@ -90,6 +90,7 @@ export async function POST(
         await sql`
           UPDATE expense_batches SET
             status = 'rejected',
+            total_amount = 0,
             reviewed_by = ${session.id},
             reviewed_at = NOW(),
             updated_at = NOW()
@@ -100,6 +101,11 @@ export async function POST(
         await sql`
           UPDATE expense_batches SET
             status = 'approved',
+            total_amount = (
+              SELECT COALESCE(SUM(amount), 0)
+              FROM expenses
+              WHERE batch_id = ${expense.batch_id}
+            ),
             reviewed_by = ${session.id},
             reviewed_at = NOW(),
             updated_at = NOW()
@@ -110,6 +116,23 @@ export async function POST(
         await sql`
           UPDATE expense_batches SET
             status = 'correction',
+            total_amount = (
+              SELECT COALESCE(SUM(amount), 0)
+              FROM expenses
+              WHERE batch_id = ${expense.batch_id}
+            ),
+            updated_at = NOW()
+          WHERE id = ${expense.batch_id}
+        `
+      } else {
+        // Atualizar total das despesas restantes na remessa
+        await sql`
+          UPDATE expense_batches SET
+            total_amount = (
+              SELECT COALESCE(SUM(amount), 0)
+              FROM expenses
+              WHERE batch_id = ${expense.batch_id}
+            ),
             updated_at = NOW()
           WHERE id = ${expense.batch_id}
         `

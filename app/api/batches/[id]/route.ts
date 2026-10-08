@@ -19,6 +19,11 @@ export async function GET(
     const [batch] = await sql`
       SELECT 
         b.*,
+        COALESCE(
+          (SELECT SUM(e.amount) FROM expenses e WHERE e.batch_id = b.id),
+          b.total_amount,
+          0
+        ) as total_amount,
         u.name as user_name,
         u.email as user_email
       FROM expense_batches b
