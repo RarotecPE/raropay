@@ -33,6 +33,27 @@ export async function GET(request: NextRequest) {
     // Incluir rejection_reason da tabela expense_batches quando a despesa tiver batch_id
     // IMPORTANTE: Converter expense_date para string com TO_CHAR para evitar problemas de timezone
     // IMPORTANTE: Buscar requester_name da tabela users para exibir nome do solicitante
+    // Regra estrita: Rascunhos são 100% pessoais do usuário logado.
+    // Nenhum usuário (mesmo administrador ou financeiro) pode visualizar rascunhos de terceiros.
+    if (status === 'draft') {
+      if (userId && userId !== 'all' && parseInt(userId) !== session.id) {
+        return NextResponse.json([])
+      }
+      const draftExpenses = await sql`
+        SELECT e.*, TO_CHAR(e.expense_date, 'YYYY-MM-DD') as expense_date, u.name as user_name,
+               COALESCE(e.rejection_reason, eb.rejection_reason) as rejection_reason,
+               e.paid, e.paid_at, e.paid_by,
+               r.name as requester_name
+        FROM expenses e
+        JOIN users u ON e.user_id = u.id
+        LEFT JOIN expense_batches eb ON e.batch_id = eb.id
+        LEFT JOIN users r ON e.requester IS NOT NULL AND e.requester ~ '^[0-9]+$' AND r.id = CAST(e.requester AS INTEGER)
+        WHERE e.status = 'draft' AND e.user_id = ${session.id}
+        ORDER BY e.created_at DESC
+      `
+      return NextResponse.json(draftExpenses)
+    }
+
     if (!canViewAll) {
       // Usuário comum: SEMPRE filtrar por user_id
       if (status && status !== 'all') {
@@ -90,6 +111,7 @@ export async function GET(request: NextRequest) {
           ORDER BY e.created_at DESC
         `
       } else if (userId && userId !== 'all') {
+        const targetUserId = parseInt(userId)
         expenses = await sql`
           SELECT e.*, TO_CHAR(e.expense_date, 'YYYY-MM-DD') as expense_date, u.name as user_name,
                  COALESCE(e.rejection_reason, eb.rejection_reason) as rejection_reason,
@@ -99,7 +121,8 @@ export async function GET(request: NextRequest) {
           JOIN users u ON e.user_id = u.id
           LEFT JOIN expense_batches eb ON e.batch_id = eb.id
           LEFT JOIN users r ON e.requester IS NOT NULL AND e.requester ~ '^[0-9]+$' AND r.id = CAST(e.requester AS INTEGER)
-          WHERE e.user_id = ${parseInt(userId)}
+          WHERE e.user_id = ${targetUserId}
+            AND (${targetUserId === session.id}::boolean OR e.status != 'draft')
           ORDER BY e.created_at DESC
         `
       } else {
@@ -112,6 +135,7 @@ export async function GET(request: NextRequest) {
           JOIN users u ON e.user_id = u.id
           LEFT JOIN expense_batches eb ON e.batch_id = eb.id
           LEFT JOIN users r ON e.requester IS NOT NULL AND e.requester ~ '^[0-9]+$' AND r.id = CAST(e.requester AS INTEGER)
+          WHERE (e.status != 'draft' OR e.user_id = ${session.id})
           ORDER BY e.created_at DESC
         `
       }

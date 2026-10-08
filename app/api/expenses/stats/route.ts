@@ -19,7 +19,7 @@ export async function GET() {
     const statsQuery = canViewAll
       ? sql`
         SELECT 
-          COUNT(*) FILTER (WHERE status = 'draft') as total_drafts,
+          COUNT(*) FILTER (WHERE status = 'draft' AND user_id = ${userId}) as total_drafts,
           COUNT(*) FILTER (WHERE status IN ('pending', 'submitted', 'analysis')) as total_pending,
           COUNT(*) FILTER (WHERE status = 'approved' AND expense_date >= date_trunc('month', CURRENT_DATE)) as total_approved,
           COUNT(*) FILTER (WHERE status = 'rejected') as total_rejected,

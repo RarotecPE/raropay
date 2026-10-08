@@ -57,6 +57,11 @@ export async function GET(
 
     const expense = expenses[0]
 
+    // Verificar permissão: rascunhos são estritamente privados do autor
+    if (expense.status === 'draft' && expense.user_id !== session.id) {
+      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+    }
+
     // Verificar permissão
     if (expense.user_id !== session.id && !canViewAllExpenses(session.role)) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
@@ -595,7 +600,12 @@ export async function DELETE(
     const isAdmin = session.role === 'admin' || session.role === 'director'
     const isOwner = expense.user_id === session.id
 
-    // Admin pode excluir qualquer despesa
+    // Rascunhos são estritamente pessoais: apenas o autor pode excluir seu rascunho
+    if (expense.status === 'draft' && !isOwner) {
+      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+    }
+
+    // Admin pode excluir qualquer despesa (exceto rascunhos de terceiros)
     // Usuário comum só pode excluir suas próprias despesas em rascunho ou processadas
     if (!isAdmin && !isOwner) {
       return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
