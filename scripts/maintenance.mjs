@@ -23,9 +23,21 @@
  *   R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, (opcional R2_BASE_PREFIX)
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
 import postgres from 'postgres'
 import bcrypt from 'bcryptjs'
 import { DeleteObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3'
+
+// Auto-carrega .env da raiz do projeto se não estiver definido
+if (!process.env.DATABASE_CONNECTION && !process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env')
+    if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+      process.loadEnvFile(envPath)
+    }
+  } catch {}
+}
 
 // ---------- DB ----------
 function getConnectionString() {
@@ -129,6 +141,56 @@ async function fixPasswords({ password = '123456', email } = {}) {
   }
 }
 
+async function fixSequences() {
+  const sql = createSql()
+  try {
+    console.log('[maintenance] Sincronizando sequences com o MAX(id) de todas as tabelas...')
+
+    const tablesWithSequences = await sql`
+      SELECT 
+        c.relname AS table_name,
+        a.attname AS column_name,
+        pg_get_serial_sequence(quote_ident(c.relname), quote_ident(a.attname)) AS sequence_name
+      FROM pg_class c
+      JOIN pg_attribute a ON a.attrelid = c.oid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relkind = 'r'
+        AND pg_get_serial_sequence(quote_ident(c.relname), quote_ident(a.attname)) IS NOT NULL
+      ORDER BY c.relname;
+    `
+
+    if (tablesWithSequences.length === 0) {
+      console.log('[maintenance] Nenhuma sequence encontrada.')
+      return
+    }
+
+    for (const item of tablesWithSequences) {
+      const { table_name, column_name, sequence_name } = item
+      if (!sequence_name) continue
+
+      try {
+        const maxResult = await sql.unsafe(`SELECT COALESCE(MAX("${column_name}"), 0) AS max_val FROM "${table_name}"`)
+        const maxVal = Number(maxResult[0]?.max_val || 0)
+
+        if (maxVal > 0) {
+          await sql.unsafe(`SELECT setval('${sequence_name}', ${maxVal}, true)`)
+          console.log(` - ${table_name}.${column_name} (${sequence_name}) -> sincronizada para ${maxVal} (próximo id: ${maxVal + 1})`)
+        } else {
+          await sql.unsafe(`SELECT setval('${sequence_name}', 1, false)`)
+          console.log(` - ${table_name}.${column_name} (${sequence_name}) -> vazia, redefinida para 1`)
+        }
+      } catch (err) {
+        console.warn(` [aviso] Não foi possível sincronizar ${table_name}.${column_name}: ${err.message}`)
+      }
+    }
+
+    console.log('[maintenance] Sequences sincronizadas com sucesso!')
+  } finally {
+    await sql.end?.()
+  }
+}
+
 function requiredEnv(name) {
   const v = process.env[name]?.trim()
   if (!v) throw new Error(`Variável ${name} não configurada`)
@@ -193,30 +255,35 @@ const getArg = (flag) => {
 }
 
 async function main() {
+  const doFixSequences = has('--fix-sequences') || has('--all')
   const doFixAdmin = has('--fix-admin') || has('--all')
   const doFixPw = has('--fix-passwords') || has('--all')
   const doCleanup = has('--cleanup') || has('--all')
 
-  if (!doFixAdmin && !doFixPw && !doCleanup) {
+  if (!doFixSequences && !doFixAdmin && !doFixPw && !doCleanup) {
     console.log(`
 Uso: node scripts/maintenance.mjs [opções]
 
+  --fix-sequences             Sincroniza todas as sequences de IDs com o MAX(id) de cada tabela
   --fix-admin                 Cria/atualiza admin@rarotec.com.br com senha admin123
   --fix-passwords             Redefine senhas (padrão 123456 para todos)
     --password <senha>        Senha a usar (default 123456)
     --email <email>           Se informado, altera só este usuário
   --cleanup                   Limpa todos os arquivos do R2 (requer envs R2_*)
-  --all                       Executa fix-admin + fix-passwords + cleanup
+  --all                       Executa fix-sequences + fix-admin + fix-passwords + cleanup
 
 Exemplos:
+  node scripts/maintenance.mjs --fix-sequences
   node scripts/maintenance.mjs --fix-admin
   node scripts/maintenance.mjs --fix-passwords --password 123456
   node scripts/maintenance.mjs --fix-passwords --email user@exemplo.com --password nova123
   node scripts/maintenance.mjs --cleanup
+  node scripts/maintenance.mjs --all
 `)
     process.exit(1)
   }
 
+  if (doFixSequences) await fixSequences()
   if (doFixAdmin) await fixAdminUser()
   if (doFixPw) {
     const pw = getArg('--password') || '123456'
