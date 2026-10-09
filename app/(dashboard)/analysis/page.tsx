@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { ExpenseCard, ExpenseData } from '@/components/expense-card'
+import { PaginationControl } from '@/components/pagination-control'
 import { useAuth } from '@/components/auth-provider'
 import { toast } from 'sonner'
 import { 
@@ -96,6 +97,21 @@ export default function AnalysisPage() {
   const { user } = useAuth()
   const [batches, setBatches] = useState<Batch[]>([])
   const [loading, setLoading] = useState(true)
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summaryTotalAmount, setSummaryTotalAmount] = useState(0)
+  const [statusCounts, setStatusCounts] = useState({
+    pending: 0,
+    correction: 0,
+    approved: 0,
+    rejected: 0,
+    all: 0,
+  })
+
+  // Filtros
   const [showFilters, setShowFilters] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [batchNumberFilter, setBatchNumberFilter] = useState('')
@@ -119,6 +135,7 @@ export default function AnalysisPage() {
     setDateEndFilter('')
     setPaymentTypeFilter('all')
     setCategoryFilter('all')
+    setPage(1)
   }
   const [batchExpenses, setBatchExpenses] = useState<Record<number, ExpenseData[]>>({})
   const [loadingExpenses, setLoadingExpenses] = useState<Set<number>>(new Set())
@@ -173,12 +190,62 @@ export default function AnalysisPage() {
 
   const canAnalyze = user?.role === "manager" || user?.role === "director" || user?.role === "admin" || user?.role === "financial"
 
+  const fetchBatches = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      params.set('page', String(page))
+      params.set('pageSize', String(pageSize))
+
+      if (searchTerm) params.set('search', searchTerm)
+      if (batchNumberFilter) params.set('batch_id', batchNumberFilter.replace('#', ''))
+      if (employeeFilter !== 'all') params.set('user_id', employeeFilter)
+      if (dateStartFilter) params.set('startDate', dateStartFilter)
+      if (dateEndFilter) params.set('endDate', dateEndFilter)
+      if (paymentTypeFilter !== 'all') params.set('settlement_type', paymentTypeFilter)
+
+      const res = await fetch(`/api/batches?${params.toString()}`)
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data && json.pagination) {
+          setBatches(json.data)
+          setTotalPages(json.pagination.totalPages)
+          setTotalCount(json.pagination.totalCount)
+          setSummaryTotalAmount(Number(json.summary?.totalAmount || 0))
+          if (json.summary?.statusCounts) {
+            setStatusCounts(json.summary.statusCounts)
+          }
+        } else if (Array.isArray(json)) {
+          setBatches(json)
+          setTotalPages(1)
+          setTotalCount(json.length)
+          setSummaryTotalAmount(json.reduce((sum: number, b: any) => sum + Number(b.total_amount || 0), 0))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar remessas:', error)
+      toast.error('Erro ao carregar remessas')
+    } finally {
+      setLoading(false)
+    }
+  }, [page, pageSize, statusFilter, searchTerm, batchNumberFilter, employeeFilter, dateStartFilter, dateEndFilter, paymentTypeFilter])
+
   useEffect(() => {
     if (canAnalyze) {
       fetchBatches()
+    }
+  }, [canAnalyze, fetchBatches])
+
+  useEffect(() => {
+    if (canAnalyze) {
       fetchEmployees()
     }
-  }, [statusFilter, canAnalyze])
+  }, [canAnalyze])
+
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, searchTerm, batchNumberFilter, employeeFilter, dateStartFilter, dateEndFilter, paymentTypeFilter, categoryFilter])
 
   async function fetchEmployees() {
     try {
@@ -189,25 +256,6 @@ export default function AnalysisPage() {
       }
     } catch (error) {
       console.error('Erro ao carregar funcionários:', error)
-    }
-  }
-
-  async function fetchBatches() {
-    try {
-      setLoading(true)
-      const url = statusFilter === 'all' 
-        ? '/api/batches'
-        : `/api/batches?status=${statusFilter}`
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        setBatches(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Erro ao carregar remessas:', error)
-      toast.error('Erro ao carregar remessas')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -914,46 +962,25 @@ if (res.ok) {
     }
   }
 
-  // Filtrar remessas
+  // Filtrar remessas (o backend já filtra a maior parte; mantemos filtro por categoria caso ativo)
   const filteredBatches = useMemo(() => {
-    return batches.filter(batch => {
-      const matchesSearch = searchTerm === '' ||
-        batch.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        batch.user_email.toLowerCase().includes(searchTerm.toLowerCase())
-      
-      // Filtro por número da remessa
-      const matchesBatchNumber = batchNumberFilter === '' ||
-        batch.id.toString().includes(batchNumberFilter) ||
-        `#${batch.id}`.includes(batchNumberFilter)
-      
-      // Filtro por funcionário
-      const matchesEmployee = employeeFilter === 'all' || batch.user_id?.toString() === employeeFilter
-      
-      // Filtro por período (data de criação da remessa)
-      const batchDate = batch.created_at ? batch.created_at.split('T')[0] : ''
-      const matchesDateStart = !dateStartFilter || batchDate >= dateStartFilter
-      const matchesDateEnd = !dateEndFilter || batchDate <= dateEndFilter
-      
-      // Filtro por tipo de pagamento (campo settlement_type na tabela)
-      const matchesPaymentType = paymentTypeFilter === 'all' || batch.settlement_type === paymentTypeFilter
-      
-      // Filtro por categoria (verifica se alguma despesa do batch tem a categoria)
-      const matchesCategory = categoryFilter === 'all' || 
-        (batch.category_totals && batch.category_totals.some(cat => cat.category === categoryFilter))
-      
-      return matchesSearch && matchesBatchNumber && matchesEmployee && matchesDateStart && matchesDateEnd && matchesPaymentType && matchesCategory
-    })
-  }, [batches, searchTerm, batchNumberFilter, employeeFilter, dateStartFilter, dateEndFilter, paymentTypeFilter, categoryFilter])
+    if (categoryFilter === 'all') return batches
+    return batches.filter(batch => 
+      batch.category_totals && batch.category_totals.some(cat => cat.category === categoryFilter)
+    )
+  }, [batches, categoryFilter])
 
   // Calcular totais
   const totals = useMemo(() => {
-    const pending = batches.filter(b => b.status === 'pending').length
-    const approved = batches.filter(b => b.status === 'approved').length
-    const rejected = batches.filter(b => b.status === 'rejected').length
-    const correction = batches.filter(b => b.status === 'correction').length
-    const totalAmount = batches.reduce((sum, b) => sum + Number(b.total_amount || 0), 0)
-    return { pending, approved, rejected, correction, totalAmount }
-  }, [batches])
+    return {
+      pending: statusCounts.pending,
+      approved: statusCounts.approved,
+      rejected: statusCounts.rejected,
+      correction: statusCounts.correction,
+      all: statusCounts.all,
+      totalAmount: summaryTotalAmount || batches.reduce((sum, b) => sum + Number(b.total_amount || 0), 0)
+    }
+  }, [statusCounts, summaryTotalAmount, batches])
 
   function getSettlementTypeIcon(type: string) {
     switch (type) {
@@ -1762,6 +1789,23 @@ if (res.ok) {
             </Card>
           ))}
         </div>
+      )}
+
+      {totalCount > 0 && (
+        <PaginationControl
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageSizeOptions={[10, 20, 50]}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => {
+            setPageSize(s)
+            setPage(1)
+          }}
+          itemName="remessas"
+          disabled={loading}
+        />
       )}
 
       {/* Modal de Rejeição */}

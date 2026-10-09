@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/dialog'
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
 import { ExpenseCard, ExpenseData } from '@/components/expense-card'
+import { PaginationControl } from '@/components/pagination-control'
+import { BulkSelectionBanner } from '@/components/bulk-selection-banner'
 import { useAuth } from '@/components/auth-provider'
 import { toast } from 'sonner'
 import { Send, Search, Clock, CheckCircle2, CreditCard, Wallet, Receipt, Building2, FileText, AlertCircle, Check, X, Trash2, Filter, ChevronDown, ChevronUp } from 'lucide-react'
@@ -65,15 +67,32 @@ export default function ProcessedExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summaryTotalAmount, setSummaryTotalAmount] = useState(0)
+
+  // Filtros
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [settlementTypeFilter, setSettlementTypeFilter] = useState('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   
+  // Seleção e cache de selecionados
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [selectedCache, setSelectedCache] = useState<Map<number, Expense>>(new Map())
+
   // Verificar se há filtros ativos
   const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || settlementTypeFilter !== 'all' || startDate !== '' || endDate !== ''
+
+  function handleFilterChange<T>(setter: React.Dispatch<React.SetStateAction<T>>, value: T) {
+    setter(value)
+    setCurrentPage(1)
+  }
 
   function clearFilters() {
     setSearchTerm('')
@@ -81,6 +100,7 @@ export default function ProcessedExpensesPage() {
     setSettlementTypeFilter('all')
     setStartDate('')
     setEndDate('')
+    setCurrentPage(1)
   }
   
   // Estado do modal de envio
@@ -112,17 +132,79 @@ export default function ProcessedExpensesPage() {
   // Estado de exclusão
   const [deleting, setDeleting] = useState<number | null>(null)
 
+  const fetchExpenses = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      params.set('status', 'processed')
+      params.set('user_id', String(user.id))
+      params.set('page', String(currentPage))
+      params.set('pageSize', String(pageSize))
+
+      if (searchTerm) params.set('search', searchTerm)
+      if (categoryFilter !== 'all') params.set('category', categoryFilter)
+      if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
+      if (startDate) params.set('startDate', startDate)
+      if (endDate) params.set('endDate', endDate)
+
+      const res = await fetch(`/api/expenses?${params.toString()}`)
+      const json = await res.json()
+
+      if (res.ok && json.data && json.pagination) {
+        setExpenses(json.data)
+        setTotalPages(json.pagination.totalPages)
+        setTotalCount(json.pagination.totalCount)
+        setSummaryTotalAmount(Number(json.summary?.totalAmount || 0))
+        // Atualizar cache de itens carregados
+        setSelectedCache(prev => {
+          const map = new Map(prev)
+          json.data.forEach((e: Expense) => map.set(e.id, e))
+          return map
+        })
+      } else if (res.ok && Array.isArray(json)) {
+        setExpenses(json)
+        setTotalPages(1)
+        setTotalCount(json.length)
+        setSummaryTotalAmount(json.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0))
+        setSelectedCache(prev => {
+          const map = new Map(prev)
+          json.forEach((e: Expense) => map.set(e.id, e))
+          return map
+        })
+      } else {
+        setExpenses([])
+        setTotalPages(1)
+        setTotalCount(0)
+        setSummaryTotalAmount(0)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar despesas:', error)
+      toast.error('Erro ao carregar despesas')
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.id, currentPage, pageSize, searchTerm, categoryFilter, settlementTypeFilter, startDate, endDate])
+
+  useEffect(() => {
+    fetchExpenses()
+  }, [fetchExpenses])
+
   async function handleDeleteExpense(id: number) {
     setDeleting(id)
     try {
       const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
       if (res.ok) {
         toast.success('Despesa excluída com sucesso')
-        // Remover dos selecionados se estava selecionada
         setSelectedIds(prev => {
           const newSet = new Set(prev)
           newSet.delete(id)
           return newSet
+        })
+        setSelectedCache(prev => {
+          const map = new Map(prev)
+          map.delete(id)
+          return map
         })
         fetchExpenses()
       } else {
@@ -137,51 +219,15 @@ export default function ProcessedExpensesPage() {
     }
   }
 
-  useEffect(() => {
-    fetchExpenses()
-  }, [user?.id])
-
-  async function fetchExpenses() {
-    if (!user?.id) return
-    try {
-      setLoading(true)
-      // Buscar despesas com status "processed" (prontas para envio)
-      const res = await fetch(`/api/expenses?status=processed&user_id=${user.id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setExpenses(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Erro ao carregar despesas:', error)
-      toast.error('Erro ao carregar despesas')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Filtrar despesas
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter(expense => {
-      const matchesSearch = searchTerm === '' || 
-        expense.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getCategoryLabel(expense.category).toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter
-      const matchesSettlementType = settlementTypeFilter === 'all' || expense.expense_type === settlementTypeFilter
-      
-      // Filtro de data
-      const expenseDate = expense.expense_date?.split('T')[0] || ''
-      const matchesDateFrom = !startDate || expenseDate >= startDate
-      const matchesDateTo = !endDate || expenseDate <= endDate
-      
-      return matchesSearch && matchesCategory && matchesSettlementType && matchesDateFrom && matchesDateTo
-    })
-  }, [expenses, searchTerm, categoryFilter, settlementTypeFilter, startDate, endDate])
-
-  // Despesas selecionadas
+  // Despesas selecionadas (a partir do cache e das visíveis)
   const selectedExpenses = useMemo(() => {
-    return expenses.filter(e => selectedIds.has(e.id))
-  }, [expenses, selectedIds])
+    const list: Expense[] = []
+    selectedIds.forEach(id => {
+      const found = selectedCache.get(id) || expenses.find(e => e.id === id)
+      if (found) list.push(found)
+    })
+    return list
+  }, [selectedIds, selectedCache, expenses])
 
   // Análise dos tipos de despesas selecionadas
   const expenseAnalysis = useMemo(() => {
@@ -197,8 +243,8 @@ export default function ProcessedExpensesPage() {
     return { hasCartao, hasAdiantamento, hasReembolso, total, types: [...new Set(types)], needsPaymentInfo }
   }, [selectedExpenses])
 
-  // Calcular totais
-  const totalAmount = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
+  // Totais
+  const totalAmount = summaryTotalAmount || expenses.reduce((sum, e) => sum + Number(e.amount), 0)
   const selectedTotal = selectedExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
 
   function toggleSelect(id: number) {
@@ -207,15 +253,63 @@ export default function ProcessedExpensesPage() {
       newSet.delete(id)
     } else {
       newSet.add(id)
+      const found = expenses.find(e => e.id === id)
+      if (found) {
+        setSelectedCache(prev => new Map(prev).set(id, found))
+      }
     }
     setSelectedIds(newSet)
   }
 
+  const isCurrentPageAllSelected = expenses.length > 0 && expenses.every(e => selectedIds.has(e.id))
+
   function selectAll() {
-    if (selectedIds.size === filteredExpenses.length) {
-      setSelectedIds(new Set())
+    if (isCurrentPageAllSelected) {
+      // Desmarcar todos da página atual
+      const newSet = new Set(selectedIds)
+      expenses.forEach(e => newSet.delete(e.id))
+      setSelectedIds(newSet)
     } else {
-      setSelectedIds(new Set(filteredExpenses.map(e => e.id)))
+      // Marcar todos da página atual
+      const newSet = new Set(selectedIds)
+      const newMap = new Map(selectedCache)
+      expenses.forEach(e => {
+        newSet.add(e.id)
+        newMap.set(e.id, e)
+      })
+      setSelectedIds(newSet)
+      setSelectedCache(newMap)
+    }
+  }
+
+  async function handleSelectAllMatching() {
+    if (!user?.id) return
+    try {
+      const params = new URLSearchParams()
+      params.set('status', 'processed')
+      params.set('user_id', String(user.id))
+      if (searchTerm) params.set('search', searchTerm)
+      if (categoryFilter !== 'all') params.set('category', categoryFilter)
+      if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
+      if (startDate) params.set('startDate', startDate)
+      if (endDate) params.set('endDate', endDate)
+
+      const res = await fetch(`/api/expenses?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        const allList: Expense[] = Array.isArray(data) ? data : data.data || []
+        const newSet = new Set<number>()
+        const newMap = new Map(selectedCache)
+        allList.forEach(e => {
+          newSet.add(e.id)
+          newMap.set(e.id, e)
+        })
+        setSelectedIds(newSet)
+        setSelectedCache(newMap)
+        toast.success(`Todas as ${allList.length} despesas foram selecionadas`)
+      }
+    } catch {
+      toast.error('Erro ao selecionar todas as despesas')
     }
   }
 
@@ -413,16 +507,26 @@ export default function ProcessedExpensesPage() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2">
             <Checkbox
-              checked={selectedIds.size === filteredExpenses.length && filteredExpenses.length > 0}
+              checked={isCurrentPageAllSelected}
               onCheckedChange={selectAll}
               id="select-all"
             />
             <Label htmlFor="select-all" className="text-sm cursor-pointer font-medium">
-              Selecionar todas ({filteredExpenses.length} despesas)
+              Selecionar todas desta página ({expenses.length} despesas)
             </Label>
           </div>
         </CardContent>
       </Card>
+
+      <BulkSelectionBanner
+        selectedCount={selectedIds.size}
+        pageCount={expenses.length}
+        totalCount={totalCount}
+        isAllMatchingSelected={selectedIds.size === totalCount && totalCount > 0}
+        onSelectAllMatching={handleSelectAllMatching}
+        onClearSelection={() => setSelectedIds(new Set())}
+        itemName="despesas"
+      />
 
       {/* Filtros Expansíveis */}
       <Collapsible open={showFilters} onOpenChange={setShowFilters}>
@@ -455,7 +559,7 @@ export default function ProcessedExpensesPage() {
                     <Input
                       placeholder="Buscar descrição..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => handleFilterChange(setSearchTerm, e.target.value)}
                       className="pl-9"
                     />
                   </div>
@@ -463,7 +567,10 @@ export default function ProcessedExpensesPage() {
                 
                 <div className="space-y-2">
                   <Label className="text-sm">Categoria</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={(val) => handleFilterChange(setCategoryFilter, val)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -477,7 +584,10 @@ export default function ProcessedExpensesPage() {
 
                 <div className="space-y-2">
                   <Label className="text-sm">Tipo de Pagamento</Label>
-                  <Select value={settlementTypeFilter} onValueChange={setSettlementTypeFilter}>
+                  <Select
+                    value={settlementTypeFilter}
+                    onValueChange={(val) => handleFilterChange(setSettlementTypeFilter, val)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -494,7 +604,7 @@ export default function ProcessedExpensesPage() {
                   <Input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => handleFilterChange(setStartDate, e.target.value)}
                   />
                 </div>
 
@@ -503,7 +613,7 @@ export default function ProcessedExpensesPage() {
                   <Input
                     type="date"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => handleFilterChange(setEndDate, e.target.value)}
                   />
                 </div>
               </div>
@@ -521,7 +631,7 @@ export default function ProcessedExpensesPage() {
       </Collapsible>
 
       {/* Lista de Despesas */}
-      {filteredExpenses.length === 0 ? (
+      {expenses.length === 0 ? (
         <Empty
           icon={Receipt}
           title="Nenhuma despesa processada"
@@ -529,7 +639,7 @@ export default function ProcessedExpensesPage() {
         />
       ) : (
         <div className="space-y-4">
-          {filteredExpenses.map((expense) => (
+          {expenses.map((expense) => (
             <ExpenseCard
               key={expense.id}
               expense={expense}
@@ -542,6 +652,22 @@ export default function ProcessedExpensesPage() {
               deleting={deleting === expense.id}
             />
           ))}
+
+          {/* Paginação */}
+          <PaginationControl
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            pageSizeOptions={[20, 50]}
+            onPageChange={(p) => setCurrentPage(p)}
+            onPageSizeChange={(s) => {
+              setPageSize(s)
+              setCurrentPage(1)
+            }}
+            itemName="despesas"
+            disabled={loading}
+          />
         </div>
       )}
 

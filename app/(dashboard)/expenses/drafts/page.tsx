@@ -1,12 +1,13 @@
 'use client'
 
 // Página de Rascunhos - v2 (Processar Despesa)
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
+import { PaginationControl } from '@/components/pagination-control'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,24 +52,40 @@ export default function DraftsPage() {
   const [viewModalOpen, setViewModalOpen] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
 
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+
   function openViewModal(expense: Expense) {
     setSelectedExpense(expense)
     setViewModalOpen(true)
   }
 
-  async function fetchDrafts() {
+  const fetchDrafts = useCallback(async () => {
     try {
-      const response = await fetch('/api/expenses?status=draft')
+      setLoading(true)
+      const params = new URLSearchParams()
+      params.set('status', 'draft')
+      params.set('page', String(page))
+      params.set('pageSize', String(pageSize))
+
+      const response = await fetch(`/api/expenses?${params.toString()}`)
       const data = await response.json()
       
-      if (response.ok && Array.isArray(data)) {
+      if (response.ok && data.data && data.pagination) {
+        setExpenses(data.data)
+        setTotalPages(data.pagination.totalPages)
+        setTotalCount(data.pagination.totalCount)
+      } else if (response.ok && Array.isArray(data)) {
         setExpenses(data)
+        setTotalPages(1)
+        setTotalCount(data.length)
       } else {
-        // Se não for um array ou houver erro, define como array vazio
         setExpenses([])
-        if (data.error) {
-          console.error('[v0] Erro da API:', data.error, data.details || '')
-        }
+        setTotalPages(1)
+        setTotalCount(0)
       }
     } catch (error) {
       console.error('Erro ao buscar rascunhos:', error)
@@ -76,11 +93,11 @@ export default function DraftsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, pageSize])
 
   useEffect(() => {
     fetchDrafts()
-  }, [])
+  }, [fetchDrafts])
 
   async function handleProcessExpense(expense: Expense) {
     setActionLoading(expense.id)
@@ -276,6 +293,23 @@ export default function DraftsPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {totalCount > 0 && (
+        <PaginationControl
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageSizeOptions={[15, 30, 50]}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => {
+            setPageSize(s)
+            setPage(1)
+          }}
+          itemName="rascunhos"
+          disabled={loading}
+        />
       )}
 
       {/* Modal de Visualização do Card */}

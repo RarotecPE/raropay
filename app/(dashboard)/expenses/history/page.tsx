@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { Empty } from '@/components/ui/empty'
 import { ExpenseCard, ExpenseData } from '@/components/expense-card'
+import { PaginationControl } from '@/components/pagination-control'
 import { useAuth } from '@/components/auth-provider'
 import { formatCurrency, formatDate, getCategoryLabel } from '@/lib/format'
 import { categoryLabels, type ExpenseCategory } from '@/lib/types'
@@ -80,6 +81,24 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
 
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summaryTotalAmount, setSummaryTotalAmount] = useState(0)
+
+  // Estatísticas globais
+  const [stats, setStats] = useState({
+    total: 0,
+    draft: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    correction: 0,
+    totalAmount: 0,
+  })
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -95,13 +114,97 @@ export default function HistoryPage() {
   const canViewAllEmployees = user?.role === 'admin' || user?.role === 'financial' || user?.role === 'director'
 
   useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/expenses/stats')
+        if (res.ok) {
+          const data = await res.json()
+          setStats({
+            total:
+              (data.totalDrafts || 0) +
+              (data.totalPending || 0) +
+              (data.totalApproved || 0) +
+              (data.totalRejected || 0) +
+              (data.totalCorrection || 0),
+            draft: data.totalDrafts || 0,
+            pending: data.totalPending || 0,
+            approved: data.totalApproved || 0,
+            rejected: data.totalRejected || 0,
+            correction: data.totalCorrection || 0,
+            totalAmount: Number(data.totalAmount || 0),
+          })
+        }
+      } catch (err) {
+        console.error('Erro ao carregar estatísticas:', err)
+      }
+    }
+    loadStats()
+  }, [])
+
+  const fetchExpenses = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('page', String(currentPage))
+      params.set('pageSize', String(pageSize))
+
+      if (searchTerm) params.set('search', searchTerm)
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (categoryFilter !== 'all') params.set('category', categoryFilter)
+      if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
+      if (batchFilter && batchFilter !== 'all') {
+        params.set('batch_id', batchFilter.replace('#', ''))
+      }
+      if (employeeFilter !== 'all') params.set('user_id', employeeFilter)
+      if (startDate) params.set('startDate', startDate)
+      if (endDate) params.set('endDate', endDate)
+
+      const response = await fetch(`/api/expenses?${params.toString()}`)
+      const json = await response.json()
+
+      if (response.ok && json.data && json.pagination) {
+        setExpenses(json.data)
+        setTotalPages(json.pagination.totalPages)
+        setTotalCount(json.pagination.totalCount)
+        setSummaryTotalAmount(Number(json.summary?.totalAmount || 0))
+      } else if (response.ok && Array.isArray(json)) {
+        setExpenses(json)
+        setTotalPages(1)
+        setTotalCount(json.length)
+        setSummaryTotalAmount(json.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0))
+      } else {
+        setExpenses([])
+        setTotalPages(1)
+        setTotalCount(0)
+        setSummaryTotalAmount(0)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar despesas:', error)
+      setExpenses([])
+    } finally {
+      setLoading(false)
+    }
+  }, [
+    currentPage,
+    pageSize,
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+    settlementTypeFilter,
+    batchFilter,
+    employeeFilter,
+    startDate,
+    endDate,
+  ])
+
+  useEffect(() => {
     if (user) {
       fetchExpenses()
-      if (canViewAllEmployees) {
+      if (canViewAllEmployees && employees.length === 0) {
         fetchEmployees()
       }
     }
-  }, [user])
+  }, [user, fetchExpenses, canViewAllEmployees, employees.length])
 
   async function fetchEmployees() {
     try {
@@ -115,84 +218,9 @@ export default function HistoryPage() {
     }
   }
 
-  async function fetchExpenses() {
-    setLoading(true)
-    try {
-      // A API já filtra por user_id para usuários comuns
-      // Admin e financeiro veem todas as despesas automaticamente
-      const response = await fetch('/api/expenses')
-      const data = await response.json()
-      
-      if (response.ok && Array.isArray(data)) {
-        setExpenses(data)
-      } else {
-        setExpenses([])
-      }
-    } catch (error) {
-      console.error('Erro ao buscar despesas:', error)
-      setExpenses([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Filtrar despesas
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = searchTerm === '' || 
-      expense.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getCategoryLabel(expense.category).toLowerCase().includes(searchTerm.toLowerCase())
-    
-    // Mapear status em português para inglês para comparação
-    const statusMap: Record<string, string[]> = {
-      'all': [],
-      'draft': ['draft'],
-      'processed': ['processed'],
-      'pending': ['pending', 'enviado', 'submitted'],
-      'enviado': ['pending', 'enviado', 'submitted'],
-      'approved': ['approved', 'aprovado'],
-      'rejected': ['rejected', 'rejeitado'],
-      'correction': ['correction'],
-    }
-    const matchesStatus = statusFilter === 'all' || 
-      (statusMap[statusFilter]?.includes(expense.status) ?? expense.status === statusFilter)
-    const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter
-    const matchesSettlementType = settlementTypeFilter === 'all' || expense.expense_type === settlementTypeFilter
-    const matchesBatch = batchFilter === '' || 
-      (batchFilter === 'none' && !expense.batch_id) ||
-      (batchFilter !== 'none' && expense.batch_id?.toString() === batchFilter.replace('#', ''))
-    const matchesEmployee = employeeFilter === 'all' || expense.user_id?.toString() === employeeFilter
-
-    // Filtro de data
-    const expenseDate = new Date(expense.expense_date)
-    const fromDate = startDate ? new Date(startDate) : null
-    const toDate = endDate ? new Date(endDate) : null
-    
-    const matchesDateFrom = !fromDate || expenseDate >= fromDate
-    const matchesDateTo = !toDate || expenseDate <= toDate
-    
-    return matchesSearch && matchesStatus && matchesCategory && matchesSettlementType && matchesBatch && matchesEmployee && matchesDateFrom && matchesDateTo
-  })
-
-  // Estatísticas
-  const approvedExpenses = filteredExpenses.filter(e => e.status === 'approved' || e.status === 'aprovado')
-  const pendingStatuses = ['pending', 'enviado', 'submitted']
-  const pendingExpenses = filteredExpenses.filter(e => pendingStatuses.includes(e.status))
-  const stats = {
-    total: filteredExpenses.length,
-    draft: filteredExpenses.filter(e => e.status === 'draft').length,
-    pending: pendingExpenses.length,
-    approved: approvedExpenses.length,
-    rejected: filteredExpenses.filter(e => e.status === 'rejected' || e.status === 'rejeitado').length,
-    correction: filteredExpenses.filter(e => e.status === 'correction').length,
-    totalAmount: filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0),
-    // Valores por status
-    approvedAmount: approvedExpenses.reduce((sum, e) => sum + Number(e.amount), 0),
-    pendingAmount: pendingExpenses.reduce((sum, e) => sum + Number(e.amount), 0),
-    // Estatísticas de pagamento (para reembolsos)
-    paid: approvedExpenses.filter(e => e.paid).length,
-    unpaid: approvedExpenses.filter(e => !e.paid).length,
-    paidAmount: approvedExpenses.filter(e => e.paid).reduce((sum, e) => sum + Number(e.amount), 0),
-    unpaidAmount: approvedExpenses.filter(e => !e.paid).reduce((sum, e) => sum + Number(e.amount), 0),
+  function handleFilterChange(setter: (value: any) => void, value: any) {
+    setter(value)
+    setCurrentPage(1)
   }
 
   function clearFilters() {
@@ -204,11 +232,20 @@ export default function HistoryPage() {
     setEmployeeFilter('all')
     setStartDate('')
     setEndDate('')
+    setCurrentPage(1)
   }
 
-  const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all' || categoryFilter !== 'all' || settlementTypeFilter !== 'all' || batchFilter !== '' || employeeFilter !== 'all' || startDate !== '' || endDate !== ''
+  const hasActiveFilters =
+    searchTerm !== '' ||
+    statusFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    settlementTypeFilter !== 'all' ||
+    batchFilter !== '' ||
+    employeeFilter !== 'all' ||
+    startDate !== '' ||
+    endDate !== ''
 
-  if (loading) {
+  if (loading && expenses.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
@@ -250,9 +287,15 @@ export default function HistoryPage() {
                 <Calendar className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total</p>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(stats.totalAmount)}</p>
-                <p className="text-sm text-muted-foreground">{stats.total} despesa(s)</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {hasActiveFilters ? 'Total Filtrado' : 'Total'}
+                </p>
+                <p className="text-2xl font-bold text-primary">
+                  {formatCurrency(hasActiveFilters ? summaryTotalAmount : stats.totalAmount)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {hasActiveFilters ? totalCount : stats.total} despesa(s)
+                </p>
               </div>
             </div>
           </CardContent>
@@ -261,7 +304,7 @@ export default function HistoryPage() {
         {/* Rascunhos */}
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'draft' ? 'ring-2 ring-primary' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'draft' ? 'all' : 'draft')}
+          onClick={() => handleFilterChange(setStatusFilter, statusFilter === 'draft' ? 'all' : 'draft')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -279,7 +322,7 @@ export default function HistoryPage() {
         {/* Em Análise */}
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'pending' ? 'ring-2 ring-primary' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')}
+          onClick={() => handleFilterChange(setStatusFilter, statusFilter === 'pending' ? 'all' : 'pending')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -297,7 +340,7 @@ export default function HistoryPage() {
         {/* Aprovadas */}
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'approved' ? 'ring-2 ring-primary' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'approved' ? 'all' : 'approved')}
+          onClick={() => handleFilterChange(setStatusFilter, statusFilter === 'approved' ? 'all' : 'approved')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -315,7 +358,7 @@ export default function HistoryPage() {
         {/* Correção */}
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'correction' ? 'ring-2 ring-primary' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'correction' ? 'all' : 'correction')}
+          onClick={() => handleFilterChange(setStatusFilter, statusFilter === 'correction' ? 'all' : 'correction')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -333,7 +376,7 @@ export default function HistoryPage() {
         {/* Rejeitadas */}
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'rejected' ? 'ring-2 ring-primary' : ''}`}
-          onClick={() => setStatusFilter(statusFilter === 'rejected' ? 'all' : 'rejected')}
+          onClick={() => handleFilterChange(setStatusFilter, statusFilter === 'rejected' ? 'all' : 'rejected')}
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -348,43 +391,6 @@ export default function HistoryPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Resumo de Status das Despesas */}
-      {(stats.approved > 0 || stats.pending > 0) && (
-        <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/50 to-sky-50/50 dark:from-blue-950/20 dark:to-sky-950/20">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Resumo das Suas Despesas</p>
-                  <p className="text-xs text-muted-foreground">{stats.total} despesa(s) no total</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2 p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Aprovadas</p>
-                    <p className="font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(stats.approvedAmount)}</p>
-                    <p className="text-xs text-muted-foreground">{stats.approved} despesa(s)</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
-                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Em Análise</p>
-                    <p className="font-semibold text-amber-700 dark:text-amber-400">{formatCurrency(stats.pendingAmount)}</p>
-                    <p className="text-xs text-muted-foreground">{stats.pending} despesa(s)</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Filtros */}
       <Collapsible open={showFilters} onOpenChange={setShowFilters}>
@@ -415,9 +421,9 @@ export default function HistoryPage() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Buscar descrição..."
+                      placeholder="Buscar descrição ou funcionário..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={(e) => handleFilterChange(setSearchTerm, e.target.value)}
                       className="pl-9"
                     />
                   </div>
@@ -425,13 +431,18 @@ export default function HistoryPage() {
 
                 <div className="space-y-2">
                   <Label className="text-sm">Status</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(val) => handleFilterChange(setStatusFilter, val)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {statusOptions.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      {statusOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -439,13 +450,18 @@ export default function HistoryPage() {
 
                 <div className="space-y-2">
                   <Label className="text-sm">Categoria</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={(val) => handleFilterChange(setCategoryFilter, val)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categoryOptions.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      {categoryOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -453,13 +469,18 @@ export default function HistoryPage() {
 
                 <div className="space-y-2">
                   <Label className="text-sm">Tipo de Pagamento</Label>
-                  <Select value={settlementTypeFilter} onValueChange={setSettlementTypeFilter}>
+                  <Select
+                    value={settlementTypeFilter}
+                    onValueChange={(val) => handleFilterChange(setSettlementTypeFilter, val)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {settlementTypeOptions.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      {settlementTypeOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -472,7 +493,7 @@ export default function HistoryPage() {
                     <Input
                       placeholder="Ex: 39 ou #39"
                       value={batchFilter}
-                      onChange={(e) => setBatchFilter(e.target.value)}
+                      onChange={(e) => handleFilterChange(setBatchFilter, e.target.value)}
                       className="pl-9"
                     />
                   </div>
@@ -481,14 +502,19 @@ export default function HistoryPage() {
                 {canViewAllEmployees && (
                   <div className="space-y-2">
                     <Label className="text-sm">Funcionário</Label>
-                    <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+                    <Select
+                      value={employeeFilter}
+                      onValueChange={(val) => handleFilterChange(setEmployeeFilter, val)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Todos" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos</SelectItem>
-                        {employees.map(emp => (
-                          <SelectItem key={emp.id} value={emp.id.toString()}>{emp.name}</SelectItem>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id.toString()}>
+                            {emp.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -500,7 +526,7 @@ export default function HistoryPage() {
                   <Input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => handleFilterChange(setStartDate, e.target.value)}
                   />
                 </div>
 
@@ -509,7 +535,7 @@ export default function HistoryPage() {
                   <Input
                     type="date"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => handleFilterChange(setEndDate, e.target.value)}
                   />
                 </div>
               </div>
@@ -525,13 +551,14 @@ export default function HistoryPage() {
       </Collapsible>
 
       {/* Lista de Despesas */}
-      {filteredExpenses.length === 0 ? (
+      {expenses.length === 0 ? (
         <Empty
           icon={History}
           title="Nenhuma despesa encontrada"
-          description={hasActiveFilters 
-            ? "Nenhuma despesa corresponde aos filtros selecionados." 
-            : "Você ainda não possui despesas registradas."
+          description={
+            hasActiveFilters
+              ? 'Nenhuma despesa corresponde aos filtros selecionados.'
+              : 'Você ainda não possui despesas registradas.'
           }
           action={
             hasActiveFilters ? (
@@ -550,7 +577,7 @@ export default function HistoryPage() {
         />
       ) : (
         <div className="space-y-4">
-          {filteredExpenses.map((expense) => (
+          {expenses.map((expense) => (
             <ExpenseCard
               key={expense.id}
               expense={expense}
@@ -558,6 +585,22 @@ export default function HistoryPage() {
               showActions={false}
             />
           ))}
+
+          {/* Paginação */}
+          <PaginationControl
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            pageSizeOptions={[15, 30, 50]}
+            onPageChange={(p) => setCurrentPage(p)}
+            onPageSizeChange={(s) => {
+              setPageSize(s)
+              setCurrentPage(1)
+            }}
+            itemName="despesas"
+            disabled={loading}
+          />
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { Empty } from '@/components/ui/empty'
 import { ExpenseCard, ExpenseData } from '@/components/expense-card'
+import { PaginationControl } from '@/components/pagination-control'
 import { useAuth } from '@/components/auth-provider'
 import { formatCurrency, formatDate, getCategoryLabel } from '@/lib/format'
 import {
@@ -62,6 +63,13 @@ export default function RejectedExpensesPage() {
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
 
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summaryTotalAmount, setSummaryTotalAmount] = useState(0)
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -70,22 +78,41 @@ export default function RejectedExpensesPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  useEffect(() => {
-    if (user) {
-      fetchExpenses()
-    }
-  }, [user])
-
-  async function fetchExpenses() {
+  const fetchExpenses = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     try {
-      const response = await fetch('/api/expenses?status=rejected')
-      const data = await response.json()
-      
-      if (response.ok && Array.isArray(data)) {
-        setExpenses(data)
+      const params = new URLSearchParams()
+      params.set('status', 'rejected')
+      params.set('user_id', String(user.id))
+      params.set('page', String(page))
+      params.set('pageSize', String(pageSize))
+
+      if (searchTerm) params.set('search', searchTerm)
+      if (categoryFilter !== 'all') params.set('category', categoryFilter)
+      if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
+      if (batchFilter && batchFilter !== 'all') params.set('batch_id', batchFilter.replace('#', ''))
+      if (startDate) params.set('startDate', startDate)
+      if (endDate) params.set('endDate', endDate)
+
+      const response = await fetch(`/api/expenses?${params.toString()}`)
+      const json = await response.json()
+
+      if (response.ok && json.data && json.pagination) {
+        setExpenses(json.data)
+        setTotalPages(json.pagination.totalPages)
+        setTotalCount(json.pagination.totalCount)
+        setSummaryTotalAmount(Number(json.summary?.totalAmount || 0))
+      } else if (response.ok && Array.isArray(json)) {
+        setExpenses(json)
+        setTotalPages(1)
+        setTotalCount(json.length)
+        setSummaryTotalAmount(json.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0))
       } else {
         setExpenses([])
+        setTotalPages(1)
+        setTotalCount(0)
+        setSummaryTotalAmount(0)
       }
     } catch (error) {
       console.error('Erro ao buscar despesas rejeitadas:', error)
@@ -93,33 +120,22 @@ export default function RejectedExpensesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, page, pageSize, searchTerm, categoryFilter, settlementTypeFilter, batchFilter, startDate, endDate])
 
-  // Filtrar despesas
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter(expense => {
-      const matchesSearch = searchTerm === '' || 
-        expense.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getCategoryLabel(expense.category).toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter
-      const matchesSettlementType = settlementTypeFilter === 'all' || expense.expense_type === settlementTypeFilter
-      const matchesBatch = batchFilter === '' || 
-        (batchFilter === 'none' && !expense.batch_id) ||
-        (batchFilter !== 'none' && expense.batch_id?.toString() === batchFilter.replace('#', ''))
+  useEffect(() => {
+    fetchExpenses()
+  }, [fetchExpenses])
 
-      // Filtro de data
-      const expenseDate = expense.expense_date?.split('T')[0] || ''
-      const matchesDateFrom = !startDate || expenseDate >= startDate
-      const matchesDateTo = !endDate || expenseDate <= endDate
-      
-      return matchesSearch && matchesCategory && matchesSettlementType && matchesBatch && matchesDateFrom && matchesDateTo
-    })
-  }, [expenses, searchTerm, categoryFilter, settlementTypeFilter, batchFilter, startDate, endDate])
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm, categoryFilter, settlementTypeFilter, batchFilter, startDate, endDate])
+
+  // Despesas da página
+  const filteredExpenses = expenses
 
   // Estatísticas
   const stats = useMemo(() => {
-    const totalAmount = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
+    const totalAmount = summaryTotalAmount || filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
     const byCategory = filteredExpenses.reduce((acc, e) => {
       acc[e.category] = (acc[e.category] || 0) + 1
       return acc
@@ -132,7 +148,7 @@ export default function RejectedExpensesPage() {
     }, {} as Record<string, number>)
 
     return {
-      total: filteredExpenses.length,
+      total: totalCount,
       totalAmount,
       byCategory,
       bySettlementType,
@@ -140,7 +156,7 @@ export default function RejectedExpensesPage() {
       reimbursement: bySettlementType['reimbursement'] || 0,
       advance: bySettlementType['advance'] || 0,
     }
-  }, [filteredExpenses])
+  }, [totalCount, summaryTotalAmount, filteredExpenses])
 
   function clearFilters() {
     setSearchTerm('')
@@ -149,6 +165,7 @@ export default function RejectedExpensesPage() {
     setBatchFilter('')
     setStartDate('')
     setEndDate('')
+    setPage(1)
   }
 
   const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || settlementTypeFilter !== 'all' || batchFilter !== '' || startDate !== '' || endDate !== ''
@@ -411,6 +428,23 @@ export default function RejectedExpensesPage() {
             />
           ))}
         </div>
+      )}
+
+      {totalCount > 0 && (
+        <PaginationControl
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageSizeOptions={[15, 30, 50]}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => {
+            setPageSize(s)
+            setPage(1)
+          }}
+          itemName="despesas"
+          disabled={loading}
+        />
       )}
     </div>
   )

@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useMemo, use } from "react"
+import { useState, useMemo, use, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
+import { PaginationControl } from "@/components/pagination-control"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -98,6 +99,20 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
       return true
     })
   }, [myExpenses, statusFilter, searchTerm])
+
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, searchTerm])
+
+  const totalPages = Math.ceil(filteredExpenses.length / pageSize) || 1
+  const paginatedExpenses = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filteredExpenses.slice(start, start + pageSize)
+  }, [filteredExpenses, page, pageSize])
 
   // Estatísticas
   const stats = useMemo(() => {
@@ -330,8 +345,9 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
 
           {/* Tabela */}
           {filteredExpenses.length > 0 ? (
+            <>
             <div className="space-y-3">
-              {filteredExpenses.map((expense: Expense) => (
+              {paginatedExpenses.map((expense: Expense) => (
                 <div
                   key={expense.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
@@ -351,6 +367,24 @@ export default function MyInvoiceDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               ))}
             </div>
+
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <PaginationControl
+                  currentPage={page}
+                  pageSize={pageSize}
+                  totalPages={totalPages}
+                  totalCount={filteredExpenses.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize)
+                    setPage(1)
+                  }}
+                  pageSizeOptions={[25, 50, 100]}
+                />
+              </div>
+            )}
+            </>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
