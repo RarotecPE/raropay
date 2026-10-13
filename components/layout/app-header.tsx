@@ -51,12 +51,12 @@ export function AppHeader() {
         <Separator orientation="vertical" className="h-6 shrink-0" />
         <Breadcrumb className="min-w-0 overflow-hidden">
           <BreadcrumbList className="flex-nowrap whitespace-nowrap">
-            <BreadcrumbItem>
+            <BreadcrumbItem className="hidden sm:inline-flex">
               <BreadcrumbLink href="/dashboard">Sistema</BreadcrumbLink>
             </BreadcrumbItem>
-            <BreadcrumbSeparator />
+            <BreadcrumbSeparator className="hidden sm:inline-flex" />
             <BreadcrumbItem>
-              <BreadcrumbPage>{title}</BreadcrumbPage>
+              <BreadcrumbPage className="truncate max-w-[120px] sm:max-w-none">{title}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
