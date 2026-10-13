@@ -19,6 +19,9 @@ import {
   ChevronRight
 } from "lucide-react"
 
+import { PaginationControl } from "@/components/pagination-control"
+import { PaginationMeta } from "@/lib/pagination"
+
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 function formatDate(dateStr: string) {
@@ -59,8 +62,17 @@ export default function MyInvoicesPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(12)
   
-  const { data: invoices, isLoading: loadingInvoices } = useSWR<(CardInvoice & { my_expense_count: number; my_total_amount: number })[]>("/api/my-invoices", fetcher)
+  type MyInvoiceItem = CardInvoice & { my_expense_count: number; my_total_amount: number }
+  const { data: rawInvoices, isLoading: loadingInvoices } = useSWR<{ data: MyInvoiceItem[]; pagination: PaginationMeta } | MyInvoiceItem[]>(
+    `/api/my-invoices?page=${page}&pageSize=${pageSize}&paginate=true`,
+    fetcher
+  )
+  const invoices = Array.isArray(rawInvoices) ? rawInvoices : rawInvoices?.data || []
+  const pagination = !Array.isArray(rawInvoices) ? rawInvoices?.pagination : undefined
+
   const { data: analysisRequests, isLoading: loadingRequests } = useSWR<AnalysisRequest[]>("/api/invoice-analysis", fetcher)
   const { data: user } = useSWR("/api/auth/session", fetcher)
 
@@ -148,7 +160,7 @@ export default function MyInvoicesPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground dark:text-slate-400">Faturas Disponíveis</p>
-                <p className="text-2xl font-bold">{invoices?.length || 0}</p>
+                <p className="text-2xl font-bold">{pagination?.totalCount ?? invoices?.length ?? 0}</p>
               </div>
             </div>
           </CardContent>
@@ -274,6 +286,7 @@ export default function MyInvoicesPage() {
         </CardHeader>
         <CardContent>
           {invoices && invoices.length > 0 ? (
+            <>
             <div className="space-y-3">
               {invoices.map((invoice) => {
                 const invoiceRequests = requestsByInvoice[invoice.id] || []
@@ -331,6 +344,24 @@ export default function MyInvoicesPage() {
                 )
               })}
             </div>
+
+            {pagination && pagination.totalPages > 1 && (
+              <div className="mt-4">
+                <PaginationControl
+                  currentPage={page}
+                  pageSize={pageSize}
+                  totalPages={pagination.totalPages}
+                  totalCount={pagination.totalCount}
+                  onPageChange={setPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize)
+                    setPage(1)
+                  }}
+                  pageSizeOptions={[12, 24, 48]}
+                />
+              </div>
+            )}
+            </>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />

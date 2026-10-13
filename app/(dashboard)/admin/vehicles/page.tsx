@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/components/auth-provider'
 import { fuelTypeOptions, type Vehicle, type User } from '@/lib/types'
 import { Plus, Car, Pencil, Trash2 } from 'lucide-react'
+import { PaginationControl } from '@/components/pagination-control'
 
 export default function VehiclesPage() {
   const { user } = useAuth()
@@ -22,6 +23,16 @@ export default function VehiclesPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  const totalPages = Math.ceil(vehicles.length / pageSize) || 1
+  const paginatedVehicles = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return vehicles.slice(start, start + pageSize)
+  }, [vehicles, page, pageSize])
   
   // Form state
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -274,6 +285,7 @@ export default function VehiclesPage() {
               Nenhum veículo cadastrado
             </div>
           ) : (
+            <>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -286,7 +298,7 @@ export default function VehiclesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {vehicles.map((v) => (
+                {paginatedVehicles.map((v) => (
                   <TableRow key={v.id}>
                     <TableCell className="font-mono font-medium">{v.plate}</TableCell>
                     <TableCell>
@@ -316,6 +328,24 @@ export default function VehiclesPage() {
                 ))}
               </TableBody>
             </Table>
+
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <PaginationControl
+                  currentPage={page}
+                  pageSize={pageSize}
+                  totalPages={totalPages}
+                  totalCount={vehicles.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize)
+                    setPage(1)
+                  }}
+                  pageSizeOptions={[20, 50, 100]}
+                />
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>

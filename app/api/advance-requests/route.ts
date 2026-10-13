@@ -4,16 +4,66 @@ import { sql } from "@/lib/db"
 import { getBooleanSetting } from "@/lib/settings"
 import { SETTING_ADVANCE_PIX_ENABLED } from "@/lib/advance-constants"
 
+import { parsePaginationParams, buildPaginationMeta } from "@/lib/pagination"
+
 // GET - Listar solicitações de adiantamento
 // Financeiro e Admin vêem todas; funcionário vê apenas as suas
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await getSession()
     if (!user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const pageParam = searchParams.get("page")
+    const pageSizeParam = searchParams.get("pageSize") || searchParams.get("limit")
+    const shouldPaginate = Boolean(pageParam || pageSizeParam || searchParams.get("paginate") === "true")
+    const { page, pageSize, offset, limit } = parsePaginationParams(searchParams, 10)
+
     let requests
+
+    if (shouldPaginate) {
+      if (user.role === "financial" || user.role === "admin") {
+        requests = await sql`
+          SELECT ar.*,
+                 u.name as employee_name,
+                 u.department as employee_department,
+                 rev.name as reviewed_by_name,
+                 (SELECT COUNT(*) FROM advance_request_messages m WHERE m.request_id = ar.id) as message_count,
+                 COUNT(*) OVER()::int as full_count
+          FROM advance_requests ar
+          JOIN users u ON u.id = ar.user_id
+          LEFT JOIN users rev ON rev.id = ar.reviewed_by
+          ORDER BY ar.created_at DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `
+      } else {
+        requests = await sql`
+          SELECT ar.*,
+                 u.name as employee_name,
+                 u.department as employee_department,
+                 rev.name as reviewed_by_name,
+                 (SELECT COUNT(*) FROM advance_request_messages m WHERE m.request_id = ar.id) as message_count,
+                 COUNT(*) OVER()::int as full_count
+          FROM advance_requests ar
+          JOIN users u ON u.id = ar.user_id
+          LEFT JOIN users rev ON rev.id = ar.reviewed_by
+          WHERE ar.user_id = ${user.id}
+          ORDER BY ar.created_at DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `
+      }
+
+      const totalItems = requests.length > 0 ? (requests[0] as any).full_count : 0
+      const pagination = buildPaginationMeta(totalItems, page, pageSize)
+      const data = requests.map(({ full_count, ...r }) => r)
+
+      return NextResponse.json({
+        data,
+        pagination
+      })
+    }
 
     if (user.role === "financial" || user.role === "admin") {
       requests = await sql`

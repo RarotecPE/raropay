@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,13 +15,14 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { ExpenseCard, ExpenseData } from '@/components/expense-card'
+import { PaginationControl } from '@/components/pagination-control'
 import { useAuth } from '@/components/auth-provider'
 import { toast } from 'sonner'
 import { 
   Search, 
   Clock, 
   CheckCircle2, 
-  XCircle,
+  XCircle, 
   Calendar,
   ChevronDown,
   ChevronRight,
@@ -67,6 +68,22 @@ export default function BatchHistoryPage() {
   const { user } = useAuth()
   const [batches, setBatches] = useState<Batch[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summaryTotalAmount, setSummaryTotalAmount] = useState(0)
+  const [statusCounts, setStatusCounts] = useState({
+    pending: 0,
+    correction: 0,
+    approved: 0,
+    rejected: 0,
+    all: 0,
+  })
+
+  // Filtros
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [settlementTypeFilter, setSettlementTypeFilter] = useState('all')
@@ -77,19 +94,38 @@ export default function BatchHistoryPage() {
   const [batchExpenses, setBatchExpenses] = useState<Record<number, ExpenseData[]>>({})
   const [loadingExpenses, setLoadingExpenses] = useState<Set<number>>(new Set())
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchBatches()
-    }
-  }, [user?.id])
-
-  async function fetchBatches() {
+  const fetchBatches = useCallback(async () => {
+    if (!user?.id) return
     try {
       setLoading(true)
-      const res = await fetch(`/api/batches?user_id=${user?.id}`)
+      const params = new URLSearchParams()
+      params.set('user_id', String(user.id))
+      params.set('page', String(page))
+      params.set('pageSize', String(pageSize))
+
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (searchTerm) params.set('search', searchTerm)
+      if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
+      if (startDate) params.set('startDate', startDate)
+      if (endDate) params.set('endDate', endDate)
+
+      const res = await fetch(`/api/batches?${params.toString()}`)
       if (res.ok) {
-        const data = await res.json()
-        setBatches(Array.isArray(data) ? data : [])
+        const json = await res.json()
+        if (json.data && json.pagination) {
+          setBatches(json.data)
+          setTotalPages(json.pagination.totalPages)
+          setTotalCount(json.pagination.totalCount)
+          setSummaryTotalAmount(Number(json.summary?.totalAmount || 0))
+          if (json.summary?.statusCounts) {
+            setStatusCounts(json.summary.statusCounts)
+          }
+        } else if (Array.isArray(json)) {
+          setBatches(json)
+          setTotalPages(1)
+          setTotalCount(json.length)
+          setSummaryTotalAmount(json.reduce((sum: number, b: any) => sum + Number(b.total_amount || 0), 0))
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar remessas:', error)
@@ -97,7 +133,15 @@ export default function BatchHistoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id, page, pageSize, statusFilter, searchTerm, settlementTypeFilter, startDate, endDate])
+
+  useEffect(() => {
+    fetchBatches()
+  }, [fetchBatches])
+
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, searchTerm, settlementTypeFilter, startDate, endDate])
 
   async function loadBatchExpenses(batchId: number) {
     if (batchExpenses[batchId]) return
@@ -131,32 +175,8 @@ export default function BatchHistoryPage() {
     setExpandedBatches(newSet)
   }
 
-  // Filtrar remessas
-  const filteredBatches = useMemo(() => {
-    return batches.filter(batch => {
-      // Filtro de status
-      const matchesStatus = statusFilter === 'all' || batch.status === statusFilter
-      
-      // Filtro de busca (por número da remessa)
-      const matchesSearch = searchTerm === '' || 
-        batch.id.toString().includes(searchTerm) ||
-        `#${batch.id}`.includes(searchTerm)
-      
-      // Filtro de tipo de pagamento
-      const matchesSettlement = settlementTypeFilter === 'all' || 
-        batch.settlement_type === settlementTypeFilter ||
-        (settlementTypeFilter === 'corporate_card' && batch.settlement_type === 'cartao_corporativo') ||
-        (settlementTypeFilter === 'reimbursement' && (batch.settlement_type === 'reembolso' || batch.settlement_type === 'refund')) ||
-        (settlementTypeFilter === 'advance' && batch.settlement_type === 'adiantamento')
-      
-      // Filtro de data
-      const batchDate = batch.created_at?.split('T')[0] || ''
-      const matchesDateFrom = !startDate || batchDate >= startDate
-      const matchesDateTo = !endDate || batchDate <= endDate
-      
-      return matchesStatus && matchesSearch && matchesSettlement && matchesDateFrom && matchesDateTo
-    })
-  }, [batches, statusFilter, searchTerm, settlementTypeFilter, startDate, endDate])
+  // Remessas da página (backend já realiza a filtragem)
+  const filteredBatches = batches
 
   // Verificar se há filtros ativos
   const hasActiveFilters = searchTerm !== '' || settlementTypeFilter !== 'all' || startDate !== '' || endDate !== ''
@@ -166,17 +186,19 @@ export default function BatchHistoryPage() {
     setSettlementTypeFilter('all')
     setStartDate('')
     setEndDate('')
+    setPage(1)
   }
 
   // Calcular totais
   const totals = useMemo(() => {
-    const pending = batches.filter(b => b.status === 'pending').length
-    const approved = batches.filter(b => b.status === 'approved').length
-    const rejected = batches.filter(b => b.status === 'rejected').length
-    const correction = batches.filter(b => b.status === 'correction').length
-    const totalAmount = batches.reduce((sum, b) => sum + Number(b.total_amount || 0), 0)
-    return { pending, approved, rejected, correction, totalAmount }
-  }, [batches])
+    return {
+      pending: statusCounts.pending,
+      approved: statusCounts.approved,
+      rejected: statusCounts.rejected,
+      correction: statusCounts.correction,
+      totalAmount: summaryTotalAmount || batches.reduce((sum, b) => sum + Number(b.total_amount || 0), 0)
+    }
+  }, [statusCounts, summaryTotalAmount, batches])
 
   function getSettlementTypeIcon(type: string) {
     switch (type) {
@@ -620,6 +642,23 @@ export default function BatchHistoryPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {totalCount > 0 && (
+        <PaginationControl
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageSizeOptions={[10, 20, 50]}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => {
+            setPageSize(s)
+            setPage(1)
+          }}
+          itemName="remessas"
+          disabled={loading}
+        />
       )}
     </div>
   )

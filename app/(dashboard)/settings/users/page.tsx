@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PaginationControl } from "@/components/pagination-control"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -180,6 +181,20 @@ export default function UsersPage() {
 
     return matchesSearch && matchesRole
   })
+
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm, roleFilter])
+
+  const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1
+  const paginatedUsers = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filteredUsers.slice(start, start + pageSize)
+  }, [filteredUsers, page, pageSize])
 
   const stats = {
     total: users.length,
@@ -399,6 +414,7 @@ export default function UsersPage() {
               <p>Nenhum usuário encontrado</p>
             </div>
           ) : (
+            <>
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -413,7 +429,7 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -477,6 +493,24 @@ export default function UsersPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <PaginationControl
+                  currentPage={page}
+                  pageSize={pageSize}
+                  totalPages={totalPages}
+                  totalCount={filteredUsers.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize)
+                    setPage(1)
+                  }}
+                  pageSizeOptions={[20, 50, 100]}
+                />
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>
