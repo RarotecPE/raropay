@@ -25,6 +25,12 @@ export async function GET(
     }
 
     const invoice = invoices[0]
+    const startDate = typeof invoice.start_date === 'string'
+      ? invoice.start_date.split('T')[0]
+      : (invoice.start_date instanceof Date ? invoice.start_date.toISOString().split('T')[0] : invoice.start_date)
+    const endDate = typeof invoice.end_date === 'string'
+      ? invoice.end_date.split('T')[0]
+      : (invoice.end_date instanceof Date ? invoice.end_date.toISOString().split('T')[0] : invoice.end_date)
 
     // Buscar despesas do funcionário neste período
     const expenses = await sql`
@@ -32,8 +38,8 @@ export async function GET(
       FROM expenses
       WHERE user_id = ${user.id}
         AND expense_type = 'corporate_card'
-        AND expense_date >= ${invoice.start_date}
-        AND expense_date <= ${invoice.end_date}
+        AND expense_date >= ${startDate}::date
+        AND expense_date <= ${endDate}::date
       ORDER BY expense_date DESC
     `
 

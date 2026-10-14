@@ -117,13 +117,20 @@ export async function GET(
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 })
     }
 
+    const startDate = typeof requestData.start_date === 'string'
+      ? requestData.start_date.split('T')[0]
+      : (requestData.start_date instanceof Date ? requestData.start_date.toISOString().split('T')[0] : requestData.start_date)
+    const endDate = typeof requestData.end_date === 'string'
+      ? requestData.end_date.split('T')[0]
+      : (requestData.end_date instanceof Date ? requestData.end_date.toISOString().split('T')[0] : requestData.end_date)
+
     const availableExpenses = await sql`
       SELECT e.*
       FROM expenses e
       WHERE e.user_id = ${requestData.employee_id}
         AND e.expense_type = 'corporate_card'
-        AND e.expense_date >= ${requestData.start_date}
-        AND e.expense_date <= ${requestData.end_date}
+        AND e.expense_date >= ${startDate}::date
+        AND e.expense_date <= ${endDate}::date
         AND e.id NOT IN (
           SELECT expense_id FROM invoice_analysis_expenses WHERE request_id = ${requestId}
         )
