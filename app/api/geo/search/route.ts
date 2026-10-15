@@ -1,10 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-// Busca de endereços e estabelecimentos usando Photon (OpenStreetMap).
-// Não requer chave de API. Documentação: https://photon.komoot.io
-//
+// Busca de endereços e estabelecimentos usando OpenStreetMap (Nominatim com fallback Photon).
 // Retorna uma lista normalizada de locais com coordenadas (lat/lng),
-// usada pelo autocomplete de localização das despesas de combustível.
+// usada pelo autocomplete de localização das despesas.
 
 export interface GeoSearchResult {
   id: string
@@ -18,7 +16,7 @@ export interface GeoSearchResult {
 }
 
 // Centro aproximado do Brasil para enviesar resultados quando não houver bias específico
-const BRAZIL_BIAS = { lat: -8.05, lon: -34.9 } // Região Nordeste (área de operação)
+const BRAZIL_BIAS = { lat: -8.05, lon: -34.9 } // Região Nordeste (área de operação principal)
 
 // Mapeia nomes de estado retornados pelo OSM para siglas (UF)
 const STATE_TO_UF: Record<string, string> = {
@@ -32,11 +30,18 @@ const STATE_TO_UF: Record<string, string> = {
   'Sergipe': 'SE', 'Tocantins': 'TO',
 }
 
-function toUf(stateName: string | undefined): string {
+function toUf(stateName: string | undefined, isoCode?: string): string {
+  if (isoCode && isoCode.startsWith('BR-')) {
+    return isoCode.slice(3).toUpperCase()
+  }
   if (!stateName) return ''
   if (stateName.length === 2) return stateName.toUpperCase()
   return STATE_TO_UF[stateName] || stateName
 }
+
+// Cache em memória para buscas recentes (10 minutos)
+const geoCache = new Map<string, { timestamp: number; data: GeoSearchResult[] }>()
+const CACHE_TTL_MS = 10 * 60 * 1000
 
 interface PhotonFeature {
   geometry: { coordinates: [number, number] } // [lon, lat]
@@ -58,15 +63,11 @@ interface PhotonFeature {
   }
 }
 
-function buildLabel(p: PhotonFeature['properties']): { name: string; label: string; city: string } {
+function buildPhotonLabel(p: PhotonFeature['properties']): { name: string; label: string; city: string } {
   const city = p.city || p.district || p.county || ''
   const uf = toUf(p.state)
-
-  // O OSM às vezes retorna nomes multivalorados separados por ";" (ex: "Posto Shell;Shell").
-  // Mantemos apenas o primeiro valor, que costuma ser o mais descritivo.
   const cleanName = p.name ? p.name.split(';')[0].trim() : ''
 
-  // Nome principal: estabelecimento nomeado, ou rua+número, ou cidade
   let streetPart = ''
   if (p.street) {
     streetPart = p.housenumber ? `${p.street}, ${p.housenumber}` : p.street
@@ -75,14 +76,131 @@ function buildLabel(p: PhotonFeature['properties']): { name: string; label: stri
   const name = cleanName || streetPart || city || 'Local'
 
   const parts = [
-    cleanName ? streetPart : '', // se tem nome, mostra a rua como complemento
+    cleanName ? streetPart : '',
     city,
     uf,
   ].filter(Boolean)
 
   const label = parts.length > 0 ? `${name} — ${parts.join(', ')}` : name
-
   return { name, label, city }
+}
+
+async function searchNominatim(q: string, bias: { lat: number; lon: number }): Promise<GeoSearchResult[]> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 3500)
+
+  try {
+    const url = new URL('https://nominatim.openstreetmap.org/search')
+    url.searchParams.set('q', q)
+    url.searchParams.set('format', 'json')
+    url.searchParams.set('addressdetails', '1')
+    url.searchParams.set('limit', '10')
+    url.searchParams.set('countrycodes', 'br')
+
+    // Enviesa a busca em torno da localização atual/padrão
+    const delta = 1.0
+    const viewbox = `${bias.lon - delta},${bias.lat + delta},${bias.lon + delta},${bias.lat - delta}`
+    url.searchParams.set('viewbox', viewbox)
+    url.searchParams.set('bounded', '0')
+
+    const response = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Raropay/1.0 (contato@rarotec.com.br)',
+        'Accept': 'application/json',
+      },
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`Nominatim retornou status ${response.status}`)
+    }
+
+    const data = await response.json()
+    if (!Array.isArray(data)) return []
+
+    return data.map((item: any) => {
+      const addr = item.address || {}
+      const city = addr.city || addr.town || addr.municipality || addr.village || addr.city_district || ''
+      const uf = toUf(addr.state, addr['ISO3166-2-lvl4'])
+
+      const rawName = item.name || addr.road || addr.amenity || (item.display_name ? item.display_name.split(',')[0].trim() : 'Local')
+      const cleanName = String(rawName).split(';')[0].trim()
+
+      const streetPart = addr.road ? (addr.house_number ? `${addr.road}, ${addr.house_number}` : addr.road) : ''
+      const parts = [
+        cleanName !== streetPart ? streetPart : '',
+        addr.suburb && addr.suburb !== city ? addr.suburb : '',
+        city,
+        uf,
+      ].filter(Boolean)
+
+      const label = parts.length > 0 ? `${cleanName} — ${parts.join(', ')}` : cleanName
+
+      return {
+        id: `nom-${item.osm_type || ''}-${item.osm_id || item.place_id}`,
+        name: cleanName,
+        label,
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+        city,
+        state: uf,
+        type: item.type || item.class || 'place',
+      }
+    })
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
+}
+
+async function searchPhoton(q: string, bias: { lat: number; lon: number }): Promise<GeoSearchResult[]> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 3000)
+
+  try {
+    const url = new URL('https://photon.komoot.io/api/')
+    url.searchParams.set('q', q)
+    url.searchParams.set('limit', '10')
+    url.searchParams.set('lang', 'default')
+    url.searchParams.set('lat', String(bias.lat))
+    url.searchParams.set('lon', String(bias.lon))
+
+    const response = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Raropay/1.0' },
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      throw new Error(`Photon retornou status ${response.status}`)
+    }
+
+    const data = await response.json()
+    const features: PhotonFeature[] = Array.isArray(data.features) ? data.features : []
+
+    return features
+      .filter((f) => !f.properties.countrycode || f.properties.countrycode === 'BR')
+      .map((f) => {
+        const [lng, lat] = f.geometry.coordinates
+        const { name, label, city } = buildPhotonLabel(f.properties)
+        return {
+          id: `pho-${f.properties.osm_id ?? ''}-${lat}-${lng}`,
+          name,
+          label,
+          lat,
+          lng,
+          city,
+          state: toUf(f.properties.state),
+          type: f.properties.osm_value || f.properties.osm_key || 'place',
+        }
+      })
+  } catch (err) {
+    clearTimeout(timeoutId)
+    throw err
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -99,53 +217,35 @@ export async function GET(request: NextRequest) {
     lon: lonParam ? parseFloat(lonParam) : BRAZIL_BIAS.lon,
   }
 
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 6000)
-
-    const url = new URL('https://photon.komoot.io/api/')
-    url.searchParams.set('q', q)
-    url.searchParams.set('limit', '10')
-    url.searchParams.set('lang', 'default')
-    url.searchParams.set('lat', String(bias.lat))
-    url.searchParams.set('lon', String(bias.lon))
-
-    const response = await fetch(url.toString(), {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Raropay/1.0' },
-      next: { revalidate: 3600 },
-    })
-
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      throw new Error(`Photon retornou ${response.status}`)
-    }
-
-    const data = await response.json()
-    const features: PhotonFeature[] = Array.isArray(data.features) ? data.features : []
-
-    const results: GeoSearchResult[] = features
-      // Prioriza resultados do Brasil
-      .filter((f) => !f.properties.countrycode || f.properties.countrycode === 'BR')
-      .map((f) => {
-        const [lng, lat] = f.geometry.coordinates
-        const { name, label, city } = buildLabel(f.properties)
-        return {
-          id: `${f.properties.osm_id ?? ''}-${lat}-${lng}`,
-          name,
-          label,
-          lat,
-          lng,
-          city,
-          state: toUf(f.properties.state),
-          type: f.properties.osm_value || f.properties.osm_key || 'place',
-        }
-      })
-
-    return NextResponse.json(results)
-  } catch (error) {
-    console.error('[v0] Erro na busca de localização (Photon):', error)
-    return NextResponse.json({ error: 'Erro ao buscar localização' }, { status: 500 })
+  // Chave de cache
+  const cacheKey = `${q.toLowerCase()}__${bias.lat.toFixed(2)}_${bias.lon.toFixed(2)}`
+  const cached = geoCache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(cached.data)
   }
+
+  // 1. Tenta Nominatim (OpenStreetMap oficial - alta disponibilidade e precisão)
+  try {
+    const results = await searchNominatim(q, bias)
+    if (results.length > 0) {
+      geoCache.set(cacheKey, { timestamp: Date.now(), data: results })
+      return NextResponse.json(results)
+    }
+  } catch (error) {
+    console.warn('[geo] Nominatim falhou ou atingiu timeout, tentando Photon fallback:', error)
+  }
+
+  // 2. Fallback: Tenta Photon (Komoot)
+  try {
+    const results = await searchPhoton(q, bias)
+    if (results.length > 0) {
+      geoCache.set(cacheKey, { timestamp: Date.now(), data: results })
+      return NextResponse.json(results)
+    }
+  } catch (error) {
+    console.warn('[geo] Photon também falhou ou atingiu timeout:', error)
+  }
+
+  // Se ambos falharem ou não encontrarem, retorna array vazio para não quebrar o frontend
+  return NextResponse.json([])
 }
