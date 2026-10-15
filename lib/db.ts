@@ -25,6 +25,20 @@ function normalizeConnectionString(value: string) {
   return `${protocol}${encodeURIComponent(user)}:${encodeURIComponent(password)}${rest}`
 }
 
+const customTypes = {
+  date: {
+    to: 1082,
+    from: [1082],
+    serialize: (x: any) => {
+      if (x instanceof Date) {
+        return x.toISOString().split('T')[0]
+      }
+      return '' + x
+    },
+    parse: (x: string) => x,
+  },
+}
+
 function createSql(value: string) {
   if (!value.startsWith('postgres://') && !value.startsWith('postgresql://') && value.includes(';')) {
     const [hostPort, database, username, ...passwordParts] = value.split(';')
@@ -40,6 +54,7 @@ function createSql(value: string) {
       idle_timeout: 20,
       connect_timeout: 10,
       prepare: false,
+      types: customTypes,
     })
   }
   return postgres(normalizeConnectionString(value), {
@@ -47,6 +62,7 @@ function createSql(value: string) {
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: false,
+    types: customTypes,
   })
 }
 

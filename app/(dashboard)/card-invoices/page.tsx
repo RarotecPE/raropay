@@ -52,6 +52,8 @@ import {
 } from "lucide-react"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "sonner"
+import { PaginationControl } from "@/components/pagination-control"
+import { PaginationMeta } from "@/lib/pagination"
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -90,7 +92,16 @@ function formatCurrency(value: number) {
 
 export default function CardInvoicesPage() {
   const router = useRouter()
-  const { data: invoices, error, isLoading, mutate } = useSWR<CardInvoice[]>("/api/card-invoices", fetcher)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(12)
+
+  const { data: rawData, error, isLoading, mutate } = useSWR<{ data: CardInvoice[]; pagination: PaginationMeta } | CardInvoice[]>(
+    `/api/card-invoices?page=${page}&pageSize=${pageSize}&paginate=true`,
+    fetcher
+  )
+
+  const invoices = Array.isArray(rawData) ? rawData : rawData?.data || []
+  const pagination = !Array.isArray(rawData) ? rawData?.pagination : undefined
   
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -409,6 +420,7 @@ export default function CardInvoicesPage() {
 
       {/* Lista de Faturas */}
       {invoices && invoices.length > 0 ? (
+        <>
         <div className="grid gap-4">
           {invoices.map((invoice) => {
             const dueStatus = getDueDateStatus(invoice.due_date)
@@ -481,6 +493,24 @@ export default function CardInvoicesPage() {
             )
           })}
         </div>
+
+        {pagination && pagination.totalPages > 1 && (
+          <div className="mt-4">
+            <PaginationControl
+              currentPage={page}
+              pageSize={pageSize}
+              totalPages={pagination.totalPages}
+              totalCount={pagination.totalCount}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize)
+                setPage(1)
+              }}
+              pageSizeOptions={[12, 24, 48]}
+            />
+          </div>
+        )}
+        </>
       ) : (
         <Card>
           <CardContent className="py-12">

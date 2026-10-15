@@ -1,6 +1,7 @@
 import { sql } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { getSession, canViewAllExpenses } from "@/lib/auth"
+import { parsePaginationParams, buildPaginationMeta } from "@/lib/pagination"
 
 function safeJson(val: any) {
   if (!val) return null
@@ -24,275 +25,209 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
+    const userId = searchParams.get("user_id") || searchParams.get("userId")
+    const search = searchParams.get("search")?.trim() || searchParams.get("q")?.trim() || ''
+    const settlementType = searchParams.get("settlement_type") || searchParams.get("settlementType")
+    const startDate = searchParams.get("startDate") || searchParams.get("start_date")
+    const endDate = searchParams.get("endDate") || searchParams.get("end_date")
+    const batchIdParam = searchParams.get("batch_id") || searchParams.get("id")
+    const paidStatus = searchParams.get("paid_status") || searchParams.get("paidStatus")
+
     const canViewAll = canViewAllExpenses(session.role)
 
-    // Subquery para obter totais por categoria como JSON
-    const categoryTotalsSubquery = `
-      (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-       FROM (
-         SELECT category, COALESCE(SUM(amount), 0) as total
-         FROM expenses
-         WHERE batch_id = b.id
-         GROUP BY category
-         ORDER BY total DESC
-       ) cat_totals
-      ) as category_totals
-    `
+    // Paginação
+    const pageParam = searchParams.get("page")
+    const pageSizeParam = searchParams.get("pageSize") || searchParams.get("limit")
+    const shouldPaginate = Boolean(pageParam || pageSizeParam || searchParams.get("paginate") === "true")
+    const { page, pageSize, offset, limit } = parsePaginationParams(searchParams, 10)
 
-    let batches
-    
+    let targetUserId: number | null = null
     if (!canViewAll) {
-      // Usuário comum: só vê suas próprias remessas
-      if (status) {
-        // Se status = 'pending', incluir também 'correction' (para o usuário ver suas remessas aguardando correção)
-        if (status === 'pending') {
-          batches = await sql`
-            SELECT 
-              b.*,
-              u.name as user_name,
-              u.email as user_email,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-              (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-              (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-               FROM (
-                 SELECT category, COALESCE(SUM(amount), 0) as total
-                 FROM expenses
-                 WHERE batch_id = b.id
-                 GROUP BY category
-                 ORDER BY total DESC
-               ) cat_totals
-              ) as category_totals
-            FROM expense_batches b
-            JOIN users u ON b.user_id = u.id
-            WHERE b.user_id = ${session.id} AND b.status IN ('pending', 'correction')
-            ORDER BY b.created_at DESC
-          `
-        } else {
-          batches = await sql`
-            SELECT 
-              b.*,
-              u.name as user_name,
-              u.email as user_email,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-              (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-              (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-               FROM (
-                 SELECT category, COALESCE(SUM(amount), 0) as total
-                 FROM expenses
-                 WHERE batch_id = b.id
-                 GROUP BY category
-                 ORDER BY total DESC
-               ) cat_totals
-              ) as category_totals
-            FROM expense_batches b
-            JOIN users u ON b.user_id = u.id
-            WHERE b.user_id = ${session.id} AND b.status = ${status}
-            ORDER BY b.created_at DESC
-          `
-        }
-      } else {
-        batches = await sql`
-          SELECT 
-            b.*,
-            u.name as user_name,
-            u.email as user_email,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-            (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-            (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-             FROM (
-               SELECT category, COALESCE(SUM(amount), 0) as total
-               FROM expenses
-               WHERE batch_id = b.id
-               GROUP BY category
-               ORDER BY total DESC
-             ) cat_totals
-            ) as category_totals
-          FROM expense_batches b
-          JOIN users u ON b.user_id = u.id
-          WHERE b.user_id = ${session.id}
-          ORDER BY b.created_at DESC
-        `
-      }
-    } else {
-      // Admin/Financeiro: pode ver todas as remessas
-      const userId = searchParams.get("user_id")
-      
-      if (userId && userId !== 'all' && status) {
-        // Se status = 'pending', incluir também 'correction'
-        if (status === 'pending') {
-          batches = await sql`
-            SELECT 
-              b.*,
-              u.name as user_name,
-              u.email as user_email,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-              (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-              (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-               FROM (
-                 SELECT category, COALESCE(SUM(amount), 0) as total
-                 FROM expenses
-                 WHERE batch_id = b.id
-                 GROUP BY category
-                 ORDER BY total DESC
-               ) cat_totals
-              ) as category_totals
-            FROM expense_batches b
-            JOIN users u ON b.user_id = u.id
-            WHERE b.user_id = ${parseInt(userId)} AND b.status IN ('pending', 'correction')
-            ORDER BY b.created_at DESC
-          `
-        } else {
-          batches = await sql`
-            SELECT 
-              b.*,
-              u.name as user_name,
-              u.email as user_email,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-              (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-              (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-               FROM (
-                 SELECT category, COALESCE(SUM(amount), 0) as total
-                 FROM expenses
-                 WHERE batch_id = b.id
-                 GROUP BY category
-                 ORDER BY total DESC
-               ) cat_totals
-              ) as category_totals
-            FROM expense_batches b
-            JOIN users u ON b.user_id = u.id
-            WHERE b.user_id = ${parseInt(userId)} AND b.status = ${status}
-            ORDER BY b.created_at DESC
-          `
-        }
-      } else if (userId && userId !== 'all') {
-        batches = await sql`
-          SELECT 
-            b.*,
-            u.name as user_name,
-            u.email as user_email,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-            (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-            (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-             FROM (
-               SELECT category, COALESCE(SUM(amount), 0) as total
-               FROM expenses
-               WHERE batch_id = b.id
-               GROUP BY category
-               ORDER BY total DESC
-             ) cat_totals
-            ) as category_totals
-          FROM expense_batches b
-          JOIN users u ON b.user_id = u.id
-          WHERE b.user_id = ${parseInt(userId)}
-          ORDER BY b.created_at DESC
-        `
-      } else if (status) {
-        // Se status = 'pending', incluir também 'correction' (ambos precisam de atenção do financeiro)
-        if (status === 'pending') {
-          batches = await sql`
-            SELECT 
-              b.*,
-              u.name as user_name,
-              u.email as user_email,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-              (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-              (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-               FROM (
-                 SELECT category, COALESCE(SUM(amount), 0) as total
-                 FROM expenses
-                 WHERE batch_id = b.id
-                 GROUP BY category
-                 ORDER BY total DESC
-               ) cat_totals
-              ) as category_totals
-            FROM expense_batches b
-            JOIN users u ON b.user_id = u.id
-            WHERE b.status IN ('pending', 'correction')
-            ORDER BY b.created_at DESC
-          `
-        } else {
-          batches = await sql`
-            SELECT 
-              b.*,
-              u.name as user_name,
-              u.email as user_email,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-              (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-              (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-              (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-               FROM (
-                 SELECT category, COALESCE(SUM(amount), 0) as total
-                 FROM expenses
-                 WHERE batch_id = b.id
-                 GROUP BY category
-                 ORDER BY total DESC
-               ) cat_totals
-              ) as category_totals
-            FROM expense_batches b
-            JOIN users u ON b.user_id = u.id
-            WHERE b.status = ${status}
-            ORDER BY b.created_at DESC
-          `
-        }
-      } else {
-        batches = await sql`
-          SELECT 
-            b.*,
-            u.name as user_name,
-            u.email as user_email,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
-            (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
-            (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
-            (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
-             FROM (
-               SELECT category, COALESCE(SUM(amount), 0) as total
-               FROM expenses
-               WHERE batch_id = b.id
-               GROUP BY category
-               ORDER BY total DESC
-             ) cat_totals
-            ) as category_totals
-          FROM expense_batches b
-          JOIN users u ON b.user_id = u.id
-          ORDER BY b.created_at DESC
-        `
-      }
+      targetUserId = session.id
+    } else if (userId && userId !== 'all') {
+      targetUserId = parseInt(userId)
     }
 
-    return NextResponse.json(batches)
+    const parsedBatchId = batchIdParam && batchIdParam !== 'all' ? parseInt(batchIdParam.replace('#', '')) : null
+    const isPendingOrCorrection = status === 'pending'
+
+    let batches: any[]
+    let totalCount = 0
+    let totalAmount = 0
+
+    if (shouldPaginate) {
+      batches = await sql`
+        SELECT 
+          b.*,
+          u.name as user_name,
+          u.email as user_email,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
+          (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
+          (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
+           FROM (
+             SELECT category, COALESCE(SUM(amount), 0) as total
+             FROM expenses
+             WHERE batch_id = b.id
+             GROUP BY category
+             ORDER BY total DESC
+           ) cat_totals
+          ) as category_totals,
+          COUNT(*) OVER() as full_count,
+          COALESCE(SUM(b.total_amount) OVER(), 0) as full_amount
+        FROM expense_batches b
+        JOIN users u ON b.user_id = u.id
+        WHERE
+          (${targetUserId !== null}::boolean = false OR b.user_id = ${targetUserId ?? 0})
+          AND (${isPendingOrCorrection}::boolean = false OR b.status IN ('pending', 'correction'))
+          AND (
+            (${!isPendingOrCorrection && Boolean(status && status !== 'all')}::boolean = false)
+            OR b.status = ${status ?? ''}
+          )
+          AND (${Boolean(settlementType && settlementType !== 'all')}::boolean = false OR b.settlement_type = ${settlementType ?? ''})
+          AND (${parsedBatchId !== null}::boolean = false OR b.id = ${parsedBatchId ?? 0})
+          AND (${Boolean(startDate)}::boolean = false OR b.created_at >= ${startDate ?? '1970-01-01'}::date)
+          AND (${Boolean(endDate)}::boolean = false OR b.created_at <= (${endDate ?? '2999-12-31'}::date + interval '1 day'))
+          AND (
+            ${Boolean(search)}::boolean = false
+            OR (
+              CAST(b.id AS TEXT) LIKE ${'%' + search.replace('#', '') + '%'}
+              OR u.name ILIKE ${'%' + search + '%'}
+              OR u.email ILIKE ${'%' + search + '%'}
+            )
+          )
+          AND (
+            ${!paidStatus || paidStatus === 'all'}::boolean = true
+            OR (${paidStatus === 'paid'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = false) = 0 AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) > 0)
+            OR (${paidStatus === 'unpaid'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) = 0)
+            OR (${paidStatus === 'partial'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) > 0 AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = false) > 0)
+          )
+        ORDER BY b.created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+
+      if (batches.length > 0) {
+        totalCount = Number(batches[0].full_count || 0)
+        totalAmount = Number(batches[0].full_amount || 0)
+      } else if (offset > 0) {
+        const countRes = await sql`
+          SELECT COUNT(*) as count, COALESCE(SUM(b.total_amount), 0) as total_amount
+          FROM expense_batches b
+          JOIN users u ON b.user_id = u.id
+          WHERE
+            (${targetUserId !== null}::boolean = false OR b.user_id = ${targetUserId ?? 0})
+            AND (${isPendingOrCorrection}::boolean = false OR b.status IN ('pending', 'correction'))
+            AND (
+              (${!isPendingOrCorrection && Boolean(status && status !== 'all')}::boolean = false)
+              OR b.status = ${status ?? ''}
+            )
+            AND (${Boolean(settlementType && settlementType !== 'all')}::boolean = false OR b.settlement_type = ${settlementType ?? ''})
+            AND (${parsedBatchId !== null}::boolean = false OR b.id = ${parsedBatchId ?? 0})
+            AND (${Boolean(startDate)}::boolean = false OR b.created_at >= ${startDate ?? '1970-01-01'}::date)
+            AND (${Boolean(endDate)}::boolean = false OR b.created_at <= (${endDate ?? '2999-12-31'}::date + interval '1 day'))
+            AND (
+              ${Boolean(search)}::boolean = false
+              OR (
+                CAST(b.id AS TEXT) LIKE ${'%' + search.replace('#', '') + '%'}
+                OR u.name ILIKE ${'%' + search + '%'}
+                OR u.email ILIKE ${'%' + search + '%'}
+              )
+            )
+            AND (
+              ${!paidStatus || paidStatus === 'all'}::boolean = true
+              OR (${paidStatus === 'paid'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = false) = 0 AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) > 0)
+              OR (${paidStatus === 'unpaid'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) = 0)
+              OR (${paidStatus === 'partial'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) > 0 AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = false) > 0)
+            )
+        `
+        totalCount = Number(countRes[0]?.count || 0)
+        totalAmount = Number(countRes[0]?.total_amount || 0)
+      }
+
+      const [statusCountsRes] = await sql`
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'pending') as pending,
+          COUNT(*) FILTER (WHERE status = 'correction') as correction,
+          COUNT(*) FILTER (WHERE status = 'approved') as approved,
+          COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
+          COUNT(*) as all_count
+        FROM expense_batches b
+        WHERE (${targetUserId !== null}::boolean = false OR b.user_id = ${targetUserId ?? 0})
+      `
+
+      const sanitizedData = batches.map(({ full_count, full_amount, ...b }) => b)
+
+      return NextResponse.json({
+        data: sanitizedData,
+        pagination: buildPaginationMeta(totalCount, page, pageSize),
+        summary: {
+          totalAmount,
+          totalCount,
+          statusCounts: {
+            pending: Number(statusCountsRes?.pending || 0),
+            correction: Number(statusCountsRes?.correction || 0),
+            approved: Number(statusCountsRes?.approved || 0),
+            rejected: Number(statusCountsRes?.rejected || 0),
+            all: Number(statusCountsRes?.all_count || 0),
+          },
+        },
+      })
+    } else {
+      batches = await sql`
+        SELECT 
+          b.*,
+          u.name as user_name,
+          u.email as user_email,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) as expense_count,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'approved') as approved_count,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'rejected') as rejected_count,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND status = 'correction') as correction_count,
+          (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE batch_id = b.id) as total_amount,
+          (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) as paid_count,
+          (SELECT COALESCE(json_agg(json_build_object('category', category, 'total', total)), '[]'::json)
+           FROM (
+             SELECT category, COALESCE(SUM(amount), 0) as total
+             FROM expenses
+             WHERE batch_id = b.id
+             GROUP BY category
+             ORDER BY total DESC
+           ) cat_totals
+          ) as category_totals
+        FROM expense_batches b
+        JOIN users u ON b.user_id = u.id
+        WHERE
+          (${targetUserId !== null}::boolean = false OR b.user_id = ${targetUserId ?? 0})
+          AND (${isPendingOrCorrection}::boolean = false OR b.status IN ('pending', 'correction'))
+          AND (
+            (${!isPendingOrCorrection && Boolean(status && status !== 'all')}::boolean = false)
+            OR b.status = ${status ?? ''}
+          )
+          AND (${Boolean(settlementType && settlementType !== 'all')}::boolean = false OR b.settlement_type = ${settlementType ?? ''})
+          AND (${parsedBatchId !== null}::boolean = false OR b.id = ${parsedBatchId ?? 0})
+          AND (${Boolean(startDate)}::boolean = false OR b.created_at >= ${startDate ?? '1970-01-01'}::date)
+          AND (${Boolean(endDate)}::boolean = false OR b.created_at <= (${endDate ?? '2999-12-31'}::date + interval '1 day'))
+          AND (
+            ${Boolean(search)}::boolean = false
+            OR (
+              CAST(b.id AS TEXT) LIKE ${'%' + search.replace('#', '') + '%'}
+              OR u.name ILIKE ${'%' + search + '%'}
+              OR u.email ILIKE ${'%' + search + '%'}
+            )
+          )
+          AND (
+            ${!paidStatus || paidStatus === 'all'}::boolean = true
+            OR (${paidStatus === 'paid'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = false) = 0 AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id) > 0)
+            OR (${paidStatus === 'unpaid'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) = 0)
+            OR (${paidStatus === 'partial'}::boolean = true AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = true) > 0 AND (SELECT COUNT(*) FROM expenses WHERE batch_id = b.id AND paid = false) > 0)
+          )
+        ORDER BY b.created_at DESC
+      `
+
+      return NextResponse.json(batches)
+    }
   } catch (error) {
     console.error("Erro ao buscar remessas:", error)
     return NextResponse.json({ error: "Erro ao buscar remessas" }, { status: 500 })

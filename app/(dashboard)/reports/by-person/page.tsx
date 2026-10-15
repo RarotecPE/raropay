@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PaginationControl } from "@/components/pagination-control"
 import { Button } from "@/components/ui/button"
 import { Users, ArrowLeft, Info, Download } from "lucide-react"
 import { Label } from "@/components/ui/label"
@@ -61,6 +62,21 @@ export default function ByPersonReportPage() {
   })
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0])
   const [status, setStatus] = useState("approved")
+
+  // Paginação da tabela
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+
+  useEffect(() => {
+    setPage(1)
+  }, [startDate, endDate, status])
+
+  const totalPages = Math.ceil((data?.byPerson.length || 0) / pageSize) || 1
+  const paginatedByPerson = useMemo(() => {
+    if (!data?.byPerson) return []
+    const start = (page - 1) * pageSize
+    return data.byPerson.slice(start, start + pageSize)
+  }, [data?.byPerson, page, pageSize])
 
   async function generateReport() {
     setLoading(true)
@@ -376,19 +392,22 @@ export default function ByPersonReportPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {data.byPerson.map((p, i) => (
-                          <tr key={`${p.name}-${i}`} className="border-b last:border-0">
-                            <td className="py-2 pr-4 text-muted-foreground">{i + 1}</td>
-                            <td className="py-2 pr-4 font-medium">
-                              {p.name}
-                              {p.isThirdParty && (
-                                <span className="ml-2 text-xs text-muted-foreground">(terceiros)</span>
-                              )}
-                            </td>
-                            <td className="py-2 pr-4 text-right">{p.count}</td>
-                            <td className="py-2 text-right font-medium">{formatCurrency(p.total)}</td>
-                          </tr>
-                        ))}
+                        {paginatedByPerson.map((p, i) => {
+                          const itemIndex = (page - 1) * pageSize + i + 1
+                          return (
+                            <tr key={`${p.name}-${itemIndex}`} className="border-b last:border-0">
+                              <td className="py-2 pr-4 text-muted-foreground">{itemIndex}</td>
+                              <td className="py-2 pr-4 font-medium">
+                                {p.name}
+                                {p.isThirdParty && (
+                                  <span className="ml-2 text-xs text-muted-foreground">(terceiros)</span>
+                                )}
+                              </td>
+                              <td className="py-2 pr-4 text-right">{p.count}</td>
+                              <td className="py-2 text-right font-medium">{formatCurrency(p.total)}</td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 font-semibold">
@@ -400,6 +419,23 @@ export default function ByPersonReportPage() {
                       </tfoot>
                     </table>
                   </div>
+
+                  {totalPages > 1 && (
+                    <div className="mt-4">
+                      <PaginationControl
+                        currentPage={page}
+                        pageSize={pageSize}
+                        totalPages={totalPages}
+                        totalCount={data.byPerson.length}
+                        onPageChange={setPage}
+                        onPageSizeChange={(newSize) => {
+                          setPageSize(newSize)
+                          setPage(1)
+                        }}
+                        pageSizeOptions={[25, 50, 100]}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>

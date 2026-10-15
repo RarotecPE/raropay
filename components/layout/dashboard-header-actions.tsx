@@ -160,9 +160,13 @@ function ApplicationsMenu() {
 
 function AccountMenu({ user }: { user: HeaderUser }) {
   const { logout: authLogout } = useAuth()
+  const { resolvedTheme, setTheme } = useTheme()
   const [nexusProfileUrl, setNexusProfileUrl] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const role = (user.role && roleLabels[user.role]) || user.role || "Usuário"
+  const isDark = resolvedTheme === "dark"
+  const nextTheme = isDark ? "light" : "dark"
+  const themeTitle = isDark ? "Ativar modo claro" : "Ativar modo escuro"
 
   useEffect(() => {
     fetch("/api/auth/applications", { cache: "no-store" })
@@ -221,6 +225,14 @@ function AccountMenu({ user }: { user: HeaderUser }) {
           {role}
         </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setTheme(nextTheme)}
+          className="gap-2 cursor-pointer"
+        >
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {themeTitle}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
             <User className="h-4 w-4" />
@@ -266,7 +278,7 @@ function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <HeaderIconButton title="Alternar tema" className="hidden sm:inline-flex opacity-70">
+      <HeaderIconButton title="Alternar tema" className="opacity-70">
         <Sun className="h-4 w-4" />
       </HeaderIconButton>
     )
@@ -279,7 +291,6 @@ function ThemeToggle() {
   return (
     <HeaderIconButton
       title={title}
-      className="hidden sm:inline-flex"
       onClick={() => setTheme(nextTheme)}
     >
       {isDark ? <Sun className="h-4 w-4 text-white" /> : <Moon className="h-4 w-4 text-slate-700" />}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { useAuth } from "@/components/auth-provider"
 import { formatCurrency } from "@/lib/format"
 import { Utensils, ArrowLeft, TrendingUp, Users, Wallet, History } from "lucide-react"
 import Link from "next/link"
+import { PaginationControl } from "@/components/pagination-control"
 
 interface UserVoucherData {
   id: number
@@ -44,6 +45,21 @@ export default function MealVoucherManagementPage() {
   const [data, setData] = useState<ManagementData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState<string>("current")
+
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+
+  useEffect(() => {
+    setPage(1)
+  }, [selectedMonth])
+
+  const totalPages = Math.ceil((data?.users.length || 0) / pageSize) || 1
+  const paginatedUsers = useMemo(() => {
+    if (!data?.users) return []
+    const start = (page - 1) * pageSize
+    return data.users.slice(start, start + pageSize)
+  }, [data?.users, page, pageSize])
 
   useEffect(() => {
     fetchData()
@@ -238,7 +254,7 @@ export default function MealVoucherManagementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.users.map((userItem) => (
+                {paginatedUsers.map((userItem) => (
                   <TableRow key={userItem.id}>
                     <TableCell className="font-medium">{userItem.name}</TableCell>
                     <TableCell className="text-muted-foreground">{userItem.department || "-"}</TableCell>
@@ -257,8 +273,8 @@ export default function MealVoucherManagementPage() {
                           />
                         </div>
                         <Badge 
-                          variant="outline" 
-                          className={`min-w-[50px] justify-center ${
+                            variant="outline" 
+                            className={`min-w-[50px] justify-center ${
                             userItem.utilizationRate > 90 ? 'border-red-500 text-red-600' : 
                             userItem.utilizationRate > 75 ? 'border-amber-500 text-amber-600' : 
                             'border-emerald-500 text-emerald-600'
@@ -273,6 +289,23 @@ export default function MealVoucherManagementPage() {
               </TableBody>
             </Table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-4">
+              <PaginationControl
+                currentPage={page}
+                pageSize={pageSize}
+                totalPages={totalPages}
+                totalCount={data.users.length}
+                onPageChange={setPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize)
+                  setPage(1)
+                }}
+                pageSizeOptions={[20, 50, 100]}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ExpenseCard, ExpenseData } from '@/components/expense-card'
+import { PaginationControl } from '@/components/pagination-control'
+import { BulkSelectionBanner } from '@/components/bulk-selection-banner'
 import { useAuth } from '@/components/auth-provider'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -89,6 +91,22 @@ export default function ApprovedExpensesPage() {
   const [loadingExpenses, setLoadingExpenses] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
+
+  // Paginação de Remessas
+  const [batchesPage, setBatchesPage] = useState(1)
+  const [batchesPageSize, setBatchesPageSize] = useState(10)
+  const [batchesTotalPages, setBatchesTotalPages] = useState(1)
+  const [batchesTotalCount, setBatchesTotalCount] = useState(0)
+  const [batchesSummaryAmount, setBatchesSummaryAmount] = useState(0)
+
+  // Paginação de Despesas Individuais
+  const [expensesPage, setExpensesPage] = useState(1)
+  const [expensesPageSize, setExpensesPageSize] = useState(15)
+  const [expensesTotalPages, setExpensesTotalPages] = useState(1)
+  const [expensesTotalCount, setExpensesTotalCount] = useState(0)
+  const [expensesSummaryAmount, setExpensesSummaryAmount] = useState(0)
+
+  // Filtros
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [employeeFilter, setEmployeeFilter] = useState('all')
@@ -123,6 +141,7 @@ export default function ApprovedExpensesPage() {
     setBatchNumberFilter('')
     setEmployeeFilter('all')
     setBatchPaidFilter('all')
+    setBatchesPage(1)
   }
 
   function clearExpenseFilters() {
@@ -132,6 +151,7 @@ export default function ApprovedExpensesPage() {
     setPaidFilter('all')
     setDateFrom('')
     setDateTo('')
+    setExpensesPage(1)
   }
 
   // Verificar status de pagamento da remessa baseado nas despesas
@@ -144,6 +164,107 @@ export default function ApprovedExpensesPage() {
     if (paidCount === expenseCount) return 'paid'
     return 'partial'
   }
+
+  const fetchBatches = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      params.set('status', 'approved')
+      params.set('page', String(batchesPage))
+      params.set('pageSize', String(batchesPageSize))
+
+      if (batchNumberFilter) params.set('batch_id', batchNumberFilter.replace('#', ''))
+      if (searchTerm) params.set('search', searchTerm)
+      if (employeeFilter !== 'all') params.set('user_id', employeeFilter)
+      if (batchPaidFilter !== 'all') params.set('paid_status', batchPaidFilter)
+
+      const res = await fetch(`/api/batches?${params.toString()}`)
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data && json.pagination) {
+          setBatches(json.data)
+          setBatchesTotalPages(json.pagination.totalPages)
+          setBatchesTotalCount(json.pagination.totalCount)
+          setBatchesSummaryAmount(Number(json.summary?.totalAmount || 0))
+        } else if (Array.isArray(json)) {
+          setBatches(json)
+          setBatchesTotalPages(1)
+          setBatchesTotalCount(json.length)
+          setBatchesSummaryAmount(json.reduce((sum: number, b: any) => sum + Number(b.total_amount || 0), 0))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar remessas:', error)
+    }
+  }, [batchesPage, batchesPageSize, batchNumberFilter, searchTerm, employeeFilter, batchPaidFilter])
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      params.set('status', 'approved')
+      params.set('page', String(expensesPage))
+      params.set('pageSize', String(expensesPageSize))
+
+      if (searchTerm) params.set('search', searchTerm)
+      if (categoryFilter !== 'all') params.set('category', categoryFilter)
+      if (employeeFilter !== 'all') params.set('user_id', employeeFilter)
+      if (paidFilter !== 'all') params.set('paid', paidFilter)
+      if (dateFrom) params.set('startDate', dateFrom)
+      if (dateTo) params.set('endDate', dateTo)
+
+      const res = await fetch(`/api/expenses?${params.toString()}`)
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data && json.pagination) {
+          setExpenses(json.data)
+          setExpensesTotalPages(json.pagination.totalPages)
+          setExpensesTotalCount(json.pagination.totalCount)
+          setExpensesSummaryAmount(Number(json.summary?.totalAmount || 0))
+        } else if (Array.isArray(json)) {
+          setExpenses(json)
+          setExpensesTotalPages(1)
+          setExpensesTotalCount(json.length)
+          setExpensesSummaryAmount(json.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar despesas:', error)
+      toast.error('Erro ao carregar despesas')
+    } finally {
+      setLoading(false)
+    }
+  }, [expensesPage, expensesPageSize, searchTerm, categoryFilter, employeeFilter, paidFilter, dateFrom, dateTo])
+
+  useEffect(() => {
+    fetchBatches()
+  }, [fetchBatches])
+
+  useEffect(() => {
+    fetchExpenses()
+  }, [fetchExpenses])
+
+  useEffect(() => {
+    setBatchesPage(1)
+  }, [batchNumberFilter, searchTerm, employeeFilter, batchPaidFilter])
+
+  useEffect(() => {
+    setExpensesPage(1)
+  }, [searchTerm, categoryFilter, employeeFilter, paidFilter, dateFrom, dateTo])
+
+  useEffect(() => {
+    async function loadEmployees() {
+      try {
+        const res = await fetch('/api/users')
+        if (res.ok) {
+          const data = await res.json()
+          setEmployees(Array.isArray(data) ? data : [])
+        }
+      } catch (error) {
+        console.error('Erro ao carregar funcionários:', error)
+      }
+    }
+    loadEmployees()
+  }, [])
 
   // Marcar remessa inteira como paga
   async function markBatchAsPaid(batchId: number) {
@@ -206,24 +327,6 @@ export default function ApprovedExpensesPage() {
     setProcessing(false)
   }
 
-  useEffect(() => {
-    fetchExpenses()
-    fetchBatches()
-    fetchEmployees()
-  }, [])
-
-  async function fetchBatches() {
-    try {
-      const res = await fetch('/api/batches?status=approved')
-      if (res.ok) {
-        const data = await res.json()
-        setBatches(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Erro ao carregar remessas:', error)
-    }
-  }
-
   async function loadBatchExpenses(batchId: number) {
     if (batchExpenses[batchId]) return
     
@@ -261,34 +364,6 @@ export default function ApprovedExpensesPage() {
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text)
     toast.success('Copiado para a área de transferência')
-  }
-
-  async function fetchExpenses() {
-    try {
-      setLoading(true)
-      const res = await fetch('/api/expenses?status=approved')
-      if (res.ok) {
-        const data = await res.json()
-        setExpenses(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Erro ao carregar despesas:', error)
-      toast.error('Erro ao carregar despesas')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function fetchEmployees() {
-    try {
-      const res = await fetch('/api/users')
-      if (res.ok) {
-        const data = await res.json()
-        setEmployees(data)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar funcionários:', error)
-    }
   }
 
   function toggleExpenseSelection(expenseId: number) {
@@ -408,36 +483,16 @@ export default function ApprovedExpensesPage() {
     }
   }
 
-  // Filtrar despesas
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = searchTerm === '' || 
-      expense.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getCategoryLabel(expense.category).toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter
-    const matchesEmployee = employeeFilter === 'all' || expense.user_id?.toString() === employeeFilter
-    const matchesPaid = paidFilter === 'all' || 
-      (paidFilter === 'paid' && expense.paid) || 
-      (paidFilter === 'unpaid' && !expense.paid)
-
-    // Filtro de data
-    const expenseDate = new Date(expense.expense_date)
-    const fromDate = dateFrom ? new Date(dateFrom) : null
-    const toDate = dateTo ? new Date(dateTo) : null
-    
-    const matchesDateFrom = !fromDate || expenseDate >= fromDate
-    const matchesDateTo = !toDate || expenseDate <= toDate
-    
-    return matchesSearch && matchesCategory && matchesEmployee && matchesPaid && matchesDateFrom && matchesDateTo
-  })
+  // Como o backend já realiza todos os filtros no banco e retorna a página correta:
+  const filteredExpenses = expenses
+  const filteredBatches = batches
 
   // Calcular totais
-  const totalAmount = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
+  const totalAmount = expensesSummaryAmount || filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
   const paidAmount = filteredExpenses.filter(e => e.paid).reduce((sum, e) => sum + Number(e.amount), 0)
   const unpaidAmount = filteredExpenses.filter(e => !e.paid).reduce((sum, e) => sum + Number(e.amount), 0)
   const paidCount = filteredExpenses.filter(e => e.paid).length
-  // Contar apenas reembolsos não pagos
+  // Contar apenas reembolsos não pagos na página atual
   const unpaidCount = filteredExpenses.filter(e => !e.paid && e.expense_type === 'reimbursement').length
 
   // Agrupar por funcionário
@@ -449,35 +504,8 @@ export default function ApprovedExpensesPage() {
     return acc
   }, {} as Record<string, { count: number, amount: number }>)
 
-// Filtrar remessas
-  const filteredBatches = batches.filter(batch => {
-    const matchesSearch = searchTerm === '' ||
-      batch.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      batch.user_email?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    // Filtro por número da remessa
-    const matchesBatchNumber = batchNumberFilter === '' ||
-      batch.id.toString().includes(batchNumberFilter) ||
-      `#${batch.id}`.includes(batchNumberFilter)
-    
-    const matchesEmployee = employeeFilter === 'all' || batch.user_id?.toString() === employeeFilter
-    
-    // Filtrar por status de pagamento
-    const paidCount = Number(batch.paid_count || 0)
-    const expenseCount = Number(batch.expense_count || 0)
-    let paymentStatus: 'paid' | 'unpaid' | 'partial' = 'unpaid'
-    if (expenseCount > 0) {
-      if (paidCount === 0) paymentStatus = 'unpaid'
-      else if (paidCount === expenseCount) paymentStatus = 'paid'
-      else paymentStatus = 'partial'
-    }
-    const matchesPayment = batchPaidFilter === 'all' || batchPaidFilter === paymentStatus
-    
-    return matchesSearch && matchesBatchNumber && matchesEmployee && matchesPayment
-  })
-
   // Totais das remessas
-  const batchesTotalAmount = filteredBatches.reduce((sum, b) => sum + Number(b.total_amount || 0), 0)
+  const batchesTotalAmount = batchesSummaryAmount || filteredBatches.reduce((sum, b) => sum + Number(b.total_amount || 0), 0)
 
   function getSettlementTypeLabel(type: string) {
     const labels: Record<string, string> = {
@@ -543,7 +571,7 @@ export default function ApprovedExpensesPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Remessas Aprovadas</p>
-                <p className="text-2xl font-bold">{batches.length}</p>
+                <p className="text-2xl font-bold">{batchesTotalCount}</p>
               </div>
             </div>
           </CardContent>
@@ -556,7 +584,7 @@ export default function ApprovedExpensesPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Despesas Aprovadas</p>
-                <p className="text-2xl font-bold">{expenses.length}</p>
+                <p className="text-2xl font-bold">{expensesTotalCount}</p>
               </div>
             </div>
           </CardContent>
@@ -582,7 +610,7 @@ export default function ApprovedExpensesPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Funcionários</p>
-                <p className="text-2xl font-bold">{Object.keys(byEmployee).length}</p>
+                <p className="text-2xl font-bold">{employees.length || Object.keys(byEmployee).length}</p>
               </div>
             </div>
           </CardContent>
@@ -594,11 +622,11 @@ export default function ApprovedExpensesPage() {
         <TabsList className="grid w-full grid-cols-2 max-w-md">
           <TabsTrigger value="batches" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            Remessas ({batches.length})
+            Remessas ({batchesTotalCount})
           </TabsTrigger>
           <TabsTrigger value="expenses" className="flex items-center gap-2">
             <Receipt className="w-4 h-4" />
-            Despesas ({expenses.length})
+            Despesas ({expensesTotalCount})
           </TabsTrigger>
         </TabsList>
 
@@ -1000,6 +1028,22 @@ export default function ApprovedExpensesPage() {
               )})}
             </div>
           )}
+
+          {batchesTotalCount > 0 && (
+            <PaginationControl
+              currentPage={batchesPage}
+              totalPages={batchesTotalPages}
+              pageSize={batchesPageSize}
+              totalCount={batchesTotalCount}
+              pageSizeOptions={[10, 20, 50]}
+              onPageChange={setBatchesPage}
+              onPageSizeChange={(s) => {
+                setBatchesPageSize(s)
+                setBatchesPage(1)
+              }}
+              itemName="remessas"
+            />
+          )}
         </TabsContent>
 
         {/* Tab de Despesas Individuais */}
@@ -1234,6 +1278,23 @@ export default function ApprovedExpensesPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {expensesTotalCount > 0 && (
+        <PaginationControl
+          currentPage={expensesPage}
+          totalPages={expensesTotalPages}
+          pageSize={expensesPageSize}
+          totalCount={expensesTotalCount}
+          pageSizeOptions={[15, 30, 50]}
+          onPageChange={setExpensesPage}
+          onPageSizeChange={(s) => {
+            setExpensesPageSize(s)
+            setExpensesPage(1)
+          }}
+          itemName="despesas"
+          disabled={loading}
+        />
       )}
         </TabsContent>
       </Tabs>

@@ -29,6 +29,12 @@ export async function GET(
     }
 
     const invoice = invoices[0]
+    const startDate = typeof invoice.start_date === 'string'
+      ? invoice.start_date.split('T')[0]
+      : (invoice.start_date instanceof Date ? invoice.start_date.toISOString().split('T')[0] : invoice.start_date)
+    const endDate = typeof invoice.end_date === 'string'
+      ? invoice.end_date.split('T')[0]
+      : (invoice.end_date instanceof Date ? invoice.end_date.toISOString().split('T')[0] : invoice.end_date)
 
     // Buscar despesas de cartão corporativo no período da fatura
     const expenses = await sql`
@@ -36,8 +42,8 @@ export async function GET(
       FROM expenses e
       JOIN users u ON e.user_id = u.id
       WHERE e.expense_type = 'corporate_card'
-        AND e.expense_date >= ${invoice.start_date}
-        AND e.expense_date <= ${invoice.end_date}
+        AND e.expense_date >= ${startDate}::date
+        AND e.expense_date <= ${endDate}::date
       ORDER BY e.expense_date DESC
     `
 
@@ -54,8 +60,8 @@ export async function GET(
         COALESCE(SUM(amount) FILTER (WHERE status = 'rejected'), 0) as rejected_amount
       FROM expenses
       WHERE expense_type = 'corporate_card'
-        AND expense_date >= ${invoice.start_date}
-        AND expense_date <= ${invoice.end_date}
+        AND expense_date >= ${startDate}::date
+        AND expense_date <= ${endDate}::date
     `
 
     // Por funcionário
@@ -68,8 +74,8 @@ export async function GET(
       FROM expenses e
       JOIN users u ON e.user_id = u.id
       WHERE e.expense_type = 'corporate_card'
-        AND e.expense_date >= ${invoice.start_date}
-        AND e.expense_date <= ${invoice.end_date}
+        AND e.expense_date >= ${startDate}::date
+        AND e.expense_date <= ${endDate}::date
       GROUP BY u.id, u.name
       ORDER BY total DESC
     `
@@ -82,8 +88,8 @@ export async function GET(
         COALESCE(SUM(amount), 0) as total
       FROM expenses
       WHERE expense_type = 'corporate_card'
-        AND expense_date >= ${invoice.start_date}
-        AND expense_date <= ${invoice.end_date}
+        AND expense_date >= ${startDate}::date
+        AND expense_date <= ${endDate}::date
       GROUP BY category
       ORDER BY total DESC
     `

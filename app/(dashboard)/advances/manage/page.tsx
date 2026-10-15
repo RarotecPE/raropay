@@ -21,6 +21,7 @@ import { formatCurrency, getCategoryLabel } from '@/lib/format'
 import {
   ADVANCE_STATUS_LABELS, ADVANCE_STATUS_CLASSES, PAYMENT_METHOD_LABELS,
 } from '@/lib/advance-constants'
+import { PaginationControl } from '@/components/pagination-control'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
@@ -90,10 +91,24 @@ export default function ManageAdvancesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter])
+
   const filtered = useMemo(
     () => (statusFilter === 'all' ? requests : requests.filter((r) => r.status === statusFilter)),
     [requests, statusFilter]
   )
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1
+  const paginated = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filtered.slice(start, start + pageSize)
+  }, [filtered, page, pageSize])
 
   // Resumo
   const summary = useMemo(() => {
@@ -258,8 +273,9 @@ export default function ManageAdvancesPage() {
           {filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma solicitação encontrada.</p>
           ) : (
+            <>
             <div className="space-y-3">
-              {filtered.map((req) => (
+              {paginated.map((req) => (
                 <div key={req.id} className="border rounded-lg p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -319,6 +335,24 @@ export default function ManageAdvancesPage() {
                 </div>
               ))}
             </div>
+
+            {totalPages > 1 && (
+              <div className="mt-4">
+                <PaginationControl
+                  currentPage={page}
+                  pageSize={pageSize}
+                  totalPages={totalPages}
+                  totalCount={filtered.length}
+                  onPageChange={setPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize)
+                    setPage(1)
+                  }}
+                  pageSizeOptions={[10, 20, 50]}
+                />
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>

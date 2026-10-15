@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ import { formatCurrency } from '@/lib/format'
 import {
   ADVANCE_STATUS_LABELS, ADVANCE_STATUS_CLASSES, ADVANCE_CATEGORIES, PAYMENT_METHOD_LABELS,
 } from '@/lib/advance-constants'
+import { PaginationControl } from '@/components/pagination-control'
 
 interface AdvanceRequest {
   id: number
@@ -53,6 +54,16 @@ export default function AdvancesPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+
+  const totalPages = Math.ceil(requests.length / pageSize) || 1
+  const paginatedRequests = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return requests.slice(start, start + pageSize)
+  }, [requests, page, pageSize])
 
   // Form
   const [amount, setAmount] = useState('')
@@ -360,8 +371,9 @@ export default function AdvancesPage() {
           </CardContent>
         </Card>
       ) : (
+        <>
         <div className="space-y-3">
-          {requests.map((req) => (
+          {paginatedRequests.map((req) => (
             <Link key={req.id} href={`/advances/${req.id}`} className="block">
               <Card className="hover:border-primary/50 transition-colors">
                 <CardContent className="py-4 flex items-center justify-between gap-4">
@@ -390,6 +402,24 @@ export default function AdvancesPage() {
             </Link>
           ))}
         </div>
+
+        {totalPages > 1 && (
+          <div className="mt-4">
+            <PaginationControl
+              currentPage={page}
+              pageSize={pageSize}
+              totalPages={totalPages}
+              totalCount={requests.length}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize)
+                setPage(1)
+              }}
+              pageSizeOptions={[10, 20, 50]}
+            />
+          </div>
+        )}
+        </>
       )}
     </div>
   )

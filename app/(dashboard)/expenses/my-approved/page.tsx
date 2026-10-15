@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { Empty } from '@/components/ui/empty'
 import { ExpenseCard, ExpenseData } from '@/components/expense-card'
+import { PaginationControl } from '@/components/pagination-control'
 import { useAuth } from '@/components/auth-provider'
 import { formatCurrency, getCategoryLabel } from '@/lib/format'
 import {
@@ -63,6 +64,19 @@ export default function MyApprovedExpensesPage() {
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
 
+  // Paginação
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summaryStats, setSummaryStats] = useState({
+    totalAmount: 0,
+    paidCount: 0,
+    unpaidCount: 0,
+    paidAmount: 0,
+    unpaidAmount: 0,
+  })
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -72,22 +86,56 @@ export default function MyApprovedExpensesPage() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  useEffect(() => {
-    if (user) {
-      fetchExpenses()
-    }
-  }, [user])
-
-  async function fetchExpenses() {
+  const fetchExpenses = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     try {
-      const response = await fetch('/api/expenses?status=approved')
-      const data = await response.json()
-      
-      if (response.ok && Array.isArray(data)) {
-        setExpenses(data)
+      const params = new URLSearchParams()
+      params.set('status', 'approved')
+      params.set('user_id', String(user.id))
+      params.set('page', String(page))
+      params.set('pageSize', String(pageSize))
+
+      if (searchTerm) params.set('search', searchTerm)
+      if (categoryFilter !== 'all') params.set('category', categoryFilter)
+      if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
+      if (batchFilter && batchFilter !== 'all') params.set('batch_id', batchFilter.replace('#', ''))
+      if (paidFilter !== 'all') params.set('paid', paidFilter)
+      if (startDate) params.set('startDate', startDate)
+      if (endDate) params.set('endDate', endDate)
+
+      const response = await fetch(`/api/expenses?${params.toString()}`)
+      const json = await response.json()
+
+      if (response.ok && json.data && json.pagination) {
+        setExpenses(json.data)
+        setTotalPages(json.pagination.totalPages)
+        setTotalCount(json.pagination.totalCount)
+        setSummaryStats({
+          totalAmount: Number(json.summary?.totalAmount || 0),
+          paidCount: Number(json.summary?.paidCount || 0),
+          unpaidCount: Number(json.summary?.unpaidCount || 0),
+          paidAmount: Number(json.summary?.paidAmount || 0),
+          unpaidAmount: Number(json.summary?.unpaidAmount || 0),
+        })
+      } else if (response.ok && Array.isArray(json)) {
+        setExpenses(json)
+        setTotalPages(1)
+        setTotalCount(json.length)
+        const totalAmount = json.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0)
+        const paidItems = json.filter((e: any) => e.paid)
+        const unpaidItems = json.filter((e: any) => !e.paid)
+        setSummaryStats({
+          totalAmount,
+          paidCount: paidItems.length,
+          unpaidCount: unpaidItems.length,
+          paidAmount: paidItems.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0),
+          unpaidAmount: unpaidItems.reduce((sum: number, e: any) => sum + Number(e.amount || 0), 0),
+        })
       } else {
         setExpenses([])
+        setTotalPages(1)
+        setTotalCount(0)
       }
     } catch (error) {
       console.error('Erro ao buscar despesas aprovadas:', error)
@@ -95,60 +143,30 @@ export default function MyApprovedExpensesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, page, pageSize, searchTerm, categoryFilter, settlementTypeFilter, batchFilter, paidFilter, startDate, endDate])
 
-  // Filtrar despesas
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter(expense => {
-      const matchesSearch = searchTerm === '' || 
-        expense.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getCategoryLabel(expense.category).toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesCategory = categoryFilter === 'all' || expense.category === categoryFilter
-      const matchesSettlementType = settlementTypeFilter === 'all' || expense.expense_type === settlementTypeFilter
-      const matchesBatch = batchFilter === '' || 
-        (batchFilter === 'none' && !expense.batch_id) ||
-        (batchFilter !== 'none' && expense.batch_id?.toString() === batchFilter.replace('#', ''))
-      
-      const matchesPaid = paidFilter === 'all' ||
-        (paidFilter === 'paid' && expense.paid) ||
-        (paidFilter === 'unpaid' && !expense.paid)
+  useEffect(() => {
+    fetchExpenses()
+  }, [fetchExpenses])
 
-      // Filtro de data
-      const expenseDate = expense.expense_date?.split('T')[0] || ''
-      const matchesDateFrom = !startDate || expenseDate >= startDate
-      const matchesDateTo = !endDate || expenseDate <= endDate
-      
-      return matchesSearch && matchesCategory && matchesSettlementType && matchesBatch && matchesPaid && matchesDateFrom && matchesDateTo
-    })
-  }, [expenses, searchTerm, categoryFilter, settlementTypeFilter, batchFilter, paidFilter, startDate, endDate])
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm, categoryFilter, settlementTypeFilter, batchFilter, paidFilter, startDate, endDate])
+
+  // Despesas da página
+  const filteredExpenses = expenses
 
   // Estatísticas
   const stats = useMemo(() => {
-    const totalAmount = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
-    const paidExpenses = filteredExpenses.filter(e => e.paid)
-    const unpaidExpenses = filteredExpenses.filter(e => !e.paid)
-    const paidAmount = paidExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
-    const unpaidAmount = unpaidExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
-    
-    const bySettlementType = filteredExpenses.reduce((acc, e) => {
-      const type = e.expense_type || 'unknown'
-      acc[type] = (acc[type] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
     return {
-      total: filteredExpenses.length,
-      totalAmount,
-      paid: paidExpenses.length,
-      paidAmount,
-      unpaid: unpaidExpenses.length,
-      unpaidAmount,
-      corporate_card: bySettlementType['corporate_card'] || 0,
-      reimbursement: bySettlementType['reimbursement'] || 0,
-      advance: bySettlementType['advance'] || 0,
+      total: totalCount,
+      totalAmount: summaryStats.totalAmount,
+      paid: summaryStats.paidCount,
+      paidAmount: summaryStats.paidAmount,
+      unpaid: summaryStats.unpaidCount,
+      unpaidAmount: summaryStats.unpaidAmount,
     }
-  }, [filteredExpenses])
+  }, [totalCount, summaryStats])
 
   function clearFilters() {
     setSearchTerm('')
@@ -158,6 +176,7 @@ export default function MyApprovedExpensesPage() {
     setPaidFilter('all')
     setStartDate('')
     setEndDate('')
+    setPage(1)
   }
 
   const hasActiveFilters = searchTerm !== '' || categoryFilter !== 'all' || settlementTypeFilter !== 'all' || batchFilter !== '' || paidFilter !== 'all' || startDate !== '' || endDate !== ''
@@ -416,6 +435,23 @@ export default function MyApprovedExpensesPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {totalCount > 0 && (
+        <PaginationControl
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          pageSizeOptions={[15, 30, 50]}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => {
+            setPageSize(s)
+            setPage(1)
+          }}
+          itemName="despesas"
+          disabled={loading}
+        />
       )}
     </div>
   )

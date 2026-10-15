@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, use, useRef } from "react"
+import { useState, useMemo, use, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import useSWR, { mutate as swrMutate } from "swr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/dialog"
 import { ExpenseCard } from "@/components/expense-card"
 import { toast } from "sonner"
+import { PaginationControl } from "@/components/pagination-control"
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -170,6 +171,20 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
       return matchesStatus && matchesEmployee && matchesSearch
     })
   }, [data?.expenses, statusFilter, employeeFilter, searchTerm])
+
+  // Paginação das despesas
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, employeeFilter, searchTerm])
+
+  const totalPages = Math.ceil(filteredExpenses.length / pageSize) || 1
+  const paginatedExpenses = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filteredExpenses.slice(start, start + pageSize)
+  }, [filteredExpenses, page, pageSize])
 
   // Estatísticas filtradas
   const filteredStats = useMemo(() => {
@@ -826,8 +841,9 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
 
       {/* Lista de Despesas */}
       {filteredExpenses.length > 0 ? (
+        <>
         <div className="space-y-3">
-          {filteredExpenses.map((expense) => (
+          {paginatedExpenses.map((expense) => (
             <ExpenseCard
               key={expense.id}
               expense={expense}
@@ -835,6 +851,24 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
             />
           ))}
         </div>
+
+        {totalPages > 1 && (
+          <div className="mt-4">
+            <PaginationControl
+              currentPage={page}
+              pageSize={pageSize}
+              totalPages={totalPages}
+              totalCount={filteredExpenses.length}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize)
+                setPage(1)
+              }}
+              pageSizeOptions={[25, 50, 100]}
+            />
+          </div>
+        )}
+        </>
       ) : (
         <Card>
           <CardContent className="py-12">

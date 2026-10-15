@@ -7,8 +7,10 @@ const monthNames = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ]
 
+import { parsePaginationParams, buildPaginationMeta } from "@/lib/pagination"
+
 // GET - Listar faturas
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getSession()
     if (!session) {
@@ -18,6 +20,29 @@ export async function GET() {
     // Apenas financeiro e admin podem acessar
     if (!['admin', 'financial'].includes(session.role)) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const pageParam = searchParams.get("page")
+    const pageSizeParam = searchParams.get("pageSize") || searchParams.get("limit")
+    const shouldPaginate = Boolean(pageParam || pageSizeParam || searchParams.get("paginate") === "true")
+    const { page, pageSize, offset, limit } = parsePaginationParams(searchParams, 12)
+
+    if (shouldPaginate) {
+      const invoices = await sql`
+        SELECT *, COUNT(*) OVER()::int as full_count
+        FROM card_invoices 
+        ORDER BY reference_month DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+      const totalItems = invoices.length > 0 ? (invoices[0] as any).full_count : 0
+      const pagination = buildPaginationMeta(totalItems, page, pageSize)
+      const data = invoices.map(({ full_count, ...inv }) => inv)
+
+      return NextResponse.json({
+        data,
+        pagination
+      })
     }
 
     const invoices = await sql`
