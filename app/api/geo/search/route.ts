@@ -203,6 +203,119 @@ async function searchPhoton(q: string, bias: { lat: number; lon: number }): Prom
   }
 }
 
+/**
+ * Higieniza e decompõe textos de endereços colados (ex: vindos de WhatsApp, Maps ou NF)
+ * gerando variações de busca progressivas para maximizar a taxa de acerto no OpenStreetMap.
+ */
+function buildSearchCandidates(rawInput: string): string[] {
+  const input = rawInput.trim()
+
+  // Se for uma busca simples curta (ex: "Recife", "Posto Shell"), usa diretamente
+  if (!input.includes(',') && !input.includes('-') && !/\d{5}/.test(input) && !/\b\d+\b/.test(input)) {
+    return [input]
+  }
+
+  const candidates: string[] = []
+
+  // 1. Extrai CEP se existir (ex: 51160-030 ou 51160030)
+  const cepMatch = input.match(/\b\d{5}-?\d{3}\b/)
+  const cep = cepMatch ? cepMatch[0] : null
+
+  // 2. Extrai Estado/UF (ex: PE, SP, etc.)
+  const ufMatch = input.match(/(?:[-/,]\s*|\b)([A-Za-z]{2})\b/)
+  const uf = ufMatch ? ufMatch[1].toUpperCase() : null
+
+  // 3. Normaliza espaçamentos e remove ruídos globais
+  let cleaned = input
+    .replace(/\bBrasil\b/gi, '')
+    .replace(/,\s*,/g, ',')
+    .replace(/,([^\s])/g, ', $1')
+    .replace(/-([^\s])/g, '- $1')
+    .replace(/\bCEP:?\s*\d{5}-?\d{3}\b/gi, '')
+    .replace(/\b\d{5}-?\d{3}\b/g, '')
+    .trim()
+
+  const parts = cleaned
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+
+  if (parts.length === 0) return candidates
+
+  // Primeira parte é normalmente o logradouro
+  let streetPart = parts[0] || ''
+
+  // Remove número predial (ex: "90", "nº 90", "s/n", "1000A")
+  streetPart = streetPart
+    .replace(/\s+(?:n[ºo°]?\s*)?\d+[a-zA-Z]?\b/gi, '')
+    .replace(/\b(?:s\/n|sn)\b/gi, '')
+    .trim()
+
+  // Expande abreviações comuns de logradouro
+  const expandedStreet = streetPart
+    .replace(/\bR\.\s*/gi, 'Rua ')
+    .replace(/\bAv\.\s*/gi, 'Avenida ')
+    .replace(/\bRod\.\s*/gi, 'Rodovia ')
+    .replace(/\bAl\.\s*/gi, 'Alameda ')
+    .replace(/\bPç\.\s*/gi, 'Praça ')
+    .replace(/\bTrav\.\s*/gi, 'Travessa ')
+    .trim()
+
+  // Nome do logradouro sem "Rua", "Avenida", etc. (ótimo para tolerar conectivos como "da Silva" vs "Silva")
+  const coreStreet = expandedStreet
+    .replace(/^(Rua|Avenida|Rodovia|Alameda|Praça|Travessa)\s+/i, '')
+    .trim()
+
+  // Identifica a cidade entre as outras partes (ex: "Recife - PE" -> "Recife")
+  let cityPart = ''
+  for (let i = 1; i < parts.length; i++) {
+    let candidate = parts[i]
+      .replace(/[-/]\s*[A-Za-z]{2}\b/gi, '')
+      .replace(/\b(?:n[ºo°]?\s*)?\d+[a-zA-Z]?\b/gi, '')
+      .replace(/\b(?:s\/n|sn)\b/gi, '')
+      .trim()
+
+    if (candidate.includes('-')) {
+      const sub = candidate.split('-').map((s) => s.trim()).filter(Boolean)
+      candidate = sub[sub.length - 1] || candidate
+    }
+
+    if (candidate && candidate.length > 2 && !/^\d+$/.test(candidate)) {
+      cityPart = candidate
+    }
+  }
+
+  // 1º Candidato inteligente: "Moisés Correia Silva, Recife, PE" (máxima tolerância a preposições ausentes)
+  if (coreStreet) {
+    const q1 = [coreStreet, cityPart, uf].filter(Boolean).join(', ')
+    if (q1 && !candidates.includes(q1)) candidates.push(q1)
+  }
+
+  // 2º Candidato estruturado: "Rua Moisés Correia Silva, Recife, PE"
+  if (expandedStreet) {
+    const q2 = [expandedStreet, cityPart, uf].filter(Boolean).join(', ')
+    if (q2 && !candidates.includes(q2)) candidates.push(q2)
+  }
+
+  // 3º Candidato: Logradouro expandido com cidade
+  if (expandedStreet && cityPart) {
+    const q3 = `${expandedStreet}, ${cityPart}`
+    if (!candidates.includes(q3)) candidates.push(q3)
+  }
+
+  // 4º Candidato: CEP (para localizar com precisão a via ou o bairro)
+  if (cep && !candidates.includes(cep)) {
+    candidates.push(cep)
+  }
+
+  // Fallback final: tenta a busca bruta original
+  if (!candidates.includes(input)) {
+    candidates.push(input)
+  }
+
+  return candidates
+}
+
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q')?.trim()
   const latParam = request.nextUrl.searchParams.get('lat')
@@ -224,28 +337,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(cached.data)
   }
 
-  // 1. Tenta Nominatim (OpenStreetMap oficial - alta disponibilidade e precisão)
-  try {
-    const results = await searchNominatim(q, bias)
-    if (results.length > 0) {
-      geoCache.set(cacheKey, { timestamp: Date.now(), data: results })
-      return NextResponse.json(results)
+  // Gera lista de queries candidatas (original + versões higienizadas e estruturadas)
+  const candidates = buildSearchCandidates(q)
+
+  // Percorre as queries candidatas até encontrar resultados
+  for (const candidateQuery of candidates) {
+    // 1. Tenta Nominatim (OpenStreetMap oficial)
+    try {
+      const results = await searchNominatim(candidateQuery, bias)
+      if (results.length > 0) {
+        geoCache.set(cacheKey, { timestamp: Date.now(), data: results })
+        return NextResponse.json(results)
+      }
+    } catch (error) {
+      console.warn(`[geo] Nominatim falhou para "${candidateQuery}":`, error)
     }
-  } catch (error) {
-    console.warn('[geo] Nominatim falhou ou atingiu timeout, tentando Photon fallback:', error)
+
+    // 2. Se Nominatim não trouxe resultados, tenta Photon para esta query
+    try {
+      const results = await searchPhoton(candidateQuery, bias)
+      if (results.length > 0) {
+        geoCache.set(cacheKey, { timestamp: Date.now(), data: results })
+        return NextResponse.json(results)
+      }
+    } catch (error) {
+      console.warn(`[geo] Photon falhou para "${candidateQuery}":`, error)
+    }
   }
 
-  // 2. Fallback: Tenta Photon (Komoot)
-  try {
-    const results = await searchPhoton(q, bias)
-    if (results.length > 0) {
-      geoCache.set(cacheKey, { timestamp: Date.now(), data: results })
-      return NextResponse.json(results)
-    }
-  } catch (error) {
-    console.warn('[geo] Photon também falhou ou atingiu timeout:', error)
-  }
-
-  // Se ambos falharem ou não encontrarem, retorna array vazio para não quebrar o frontend
+  // Se nenhum candidato retornar resultados, devolve array vazio
   return NextResponse.json([])
 }
