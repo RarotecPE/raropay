@@ -24,7 +24,10 @@ export async function POST(
 
     // Verificar solicitação e permissão
     const requests = await sql`
-      SELECT * FROM advance_requests WHERE id = ${requestId}
+      SELECT ar.*, u.name as employee_name
+      FROM advance_requests ar
+      JOIN users u ON u.id = ar.user_id
+      WHERE ar.id = ${requestId}
     `
     if (requests.length === 0) {
       return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 })
@@ -50,6 +53,41 @@ export async function POST(
         WHERE id = ${requestId}
       `
     }
+
+    const employeeName = String(advanceRequest.employee_name || `Colaborador #${advanceRequest.user_id}`)
+    const { auditClient, getRequestContext } = await import("@/lib/audit")
+    auditClient.log({
+      category: "advances",
+      action: "advance.message_sent",
+      severity: "INFO",
+      actor: {
+        type: "user",
+        userId: String(user.id),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      targets: [
+        {
+          type: "advance_request",
+          id: String(requestId),
+          label: `Adiantamento #${requestId} - ${employeeName}`,
+        },
+        {
+          type: "user",
+          id: String(advanceRequest.user_id),
+          label: employeeName,
+        },
+      ],
+      context: getRequestContext(request),
+      details: {
+        request_id: requestId,
+        employee_id: advanceRequest.user_id,
+        employee_name: employeeName,
+        message_id: result[0]?.id,
+        message: message.trim(),
+      },
+    })
 
     return NextResponse.json(result[0], { status: 201 })
   } catch (error) {

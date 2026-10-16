@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { deleteFile, listFiles } from '@/lib/r2-storage'
+import { auditClient, getRequestContext } from '@/lib/audit'
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
     const session = await getSession()
     if (!session) {
@@ -24,6 +25,27 @@ export async function DELETE() {
       await deleteFile(file.pathname)
       deleted.push(file.pathname)
     }
+
+    auditClient.log({
+      category: 'storage',
+      action: 'storage.blobs_cleaned',
+      severity: 'WARNING',
+      actor: {
+        type: 'user',
+        userId: String(session.id),
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      },
+      targets: [
+        { type: 'storage', id: 'r2-blobs', label: `Limpeza de Comprovantes no Storage (${deleted.length} arquivos)` },
+      ],
+      context: getRequestContext(request),
+      details: {
+        deleted_count: deleted.length,
+        deleted_files: deleted.slice(0, 100),
+      },
+    })
 
     return NextResponse.json({
       message: `${deleted.length} arquivo(s) deletado(s)`,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
+import { auditClient, getRequestContext } from "@/lib/audit"
 
 // GET - Buscar fatura específica com despesas
 export async function GET(
@@ -126,6 +127,14 @@ export async function PUT(
     const body = await request.json()
     const { month, year, start_date, end_date, due_date, notes } = body
 
+    const existingRows = await sql`
+      SELECT * FROM card_invoices WHERE id = ${parseInt(id)}
+    `
+    if (existingRows.length === 0) {
+      return NextResponse.json({ error: "Fatura não encontrada" }, { status: 404 })
+    }
+    const beforeInvoice = existingRows[0] as any
+
     // Criar reference_month no formato YYYY-MM
     const reference_month = `${year}-${String(month).padStart(2, '0')}`
     
@@ -150,11 +159,52 @@ export async function PUT(
       RETURNING *
     `
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Fatura não encontrada" }, { status: 404 })
-    }
+    const afterInvoice = result[0] as any
 
-    return NextResponse.json(result[0])
+    auditClient.log({
+      category: "finance",
+      action: "card_invoice.updated",
+      severity: "INFO",
+      actor: {
+        type: "user",
+        userId: String(user.id),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      targets: [
+        {
+          type: "card_invoice",
+          id: String(afterInvoice.id),
+          label: afterInvoice.reference_name,
+        },
+      ],
+      context: getRequestContext(request),
+      diff: {
+        before: {
+          reference_month: beforeInvoice.reference_month,
+          reference_name: beforeInvoice.reference_name,
+          start_date: beforeInvoice.start_date,
+          end_date: beforeInvoice.end_date,
+          due_date: beforeInvoice.due_date,
+          notes: beforeInvoice.notes,
+        },
+        after: {
+          reference_month: afterInvoice.reference_month,
+          reference_name: afterInvoice.reference_name,
+          start_date: afterInvoice.start_date,
+          end_date: afterInvoice.end_date,
+          due_date: afterInvoice.due_date,
+          notes: afterInvoice.notes,
+        },
+      },
+      details: {
+        reference_month: afterInvoice.reference_month,
+        reference_name: afterInvoice.reference_name,
+      },
+    })
+
+    return NextResponse.json(afterInvoice)
   } catch (error) {
     console.error("Erro ao atualizar fatura:", error)
     return NextResponse.json({ error: "Erro ao atualizar fatura" }, { status: 500 })
@@ -180,12 +230,43 @@ export async function DELETE(
 
     const result = await sql`
       DELETE FROM card_invoices WHERE id = ${parseInt(id)}
-      RETURNING id
+      RETURNING *
     `
 
     if (result.length === 0) {
       return NextResponse.json({ error: "Fatura não encontrada" }, { status: 404 })
     }
+
+    const deletedInvoice = result[0] as any
+
+    auditClient.log({
+      category: "finance",
+      action: "card_invoice.deleted",
+      severity: "WARNING",
+      actor: {
+        type: "user",
+        userId: String(user.id),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      targets: [
+        {
+          type: "card_invoice",
+          id: String(deletedInvoice.id),
+          label: deletedInvoice.reference_name,
+        },
+      ],
+      context: getRequestContext(request),
+      details: {
+        reference_month: deletedInvoice.reference_month,
+        reference_name: deletedInvoice.reference_name,
+        start_date: deletedInvoice.start_date,
+        end_date: deletedInvoice.end_date,
+        due_date: deletedInvoice.due_date,
+        notes: deletedInvoice.notes || null,
+      },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

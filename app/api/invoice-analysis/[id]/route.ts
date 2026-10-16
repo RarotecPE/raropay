@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
+import { auditClient, getRequestContext } from "@/lib/audit"
 
 // GET - Obter detalhes de uma solicitação
 export async function GET(
@@ -109,14 +110,19 @@ export async function PATCH(
 
     // Buscar solicitação para verificar permissão
     const requests = await sql`
-      SELECT * FROM invoice_analysis_requests WHERE id = ${parseInt(id)}
+      SELECT iar.*, u.name as employee_name, ci.reference_name as invoice_name
+      FROM invoice_analysis_requests iar
+      LEFT JOIN users u ON u.id = iar.employee_id
+      LEFT JOIN card_invoices ci ON ci.id = iar.invoice_id
+      WHERE iar.id = ${parseInt(id)}
     `
 
     if (requests.length === 0) {
       return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 })
     }
 
-    const analysisRequest = requests[0]
+    const analysisRequest = requests[0] as any
+    let updatedStatus: string | null = null
 
     // Apenas financeiro pode resolver, funcionário pode marcar como respondido
     if (['admin', 'financial'].includes(user.role)) {
@@ -126,6 +132,7 @@ export async function PATCH(
           SET status = 'resolved', resolved_at = NOW(), updated_at = NOW()
           WHERE id = ${parseInt(id)}
         `
+        updatedStatus = 'resolved'
       }
     } else if (analysisRequest.employee_id === user.id) {
       if (status === 'in_progress') {
@@ -134,9 +141,59 @@ export async function PATCH(
           SET status = 'in_progress', updated_at = NOW()
           WHERE id = ${parseInt(id)}
         `
+        updatedStatus = 'in_progress'
       }
     } else {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
+    }
+
+    if (updatedStatus) {
+      const action =
+        updatedStatus === "resolved"
+          ? "card_invoice.reconciled"
+          : "card_invoice.analysis_status_changed"
+
+      auditClient.log({
+        category: "finance",
+        action,
+        severity: "INFO",
+        actor: {
+          type: "user",
+          userId: String(user.id),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        targets: [
+          {
+            type: "invoice_analysis_request",
+            id: String(analysisRequest.id),
+            label: analysisRequest.subject,
+          },
+          {
+            type: "card_invoice",
+            id: String(analysisRequest.invoice_id),
+            label: analysisRequest.invoice_name || `Fatura #${analysisRequest.invoice_id}`,
+          },
+          {
+            type: "user",
+            id: String(analysisRequest.employee_id),
+            label: analysisRequest.employee_name || `Colaborador #${analysisRequest.employee_id}`,
+          },
+        ],
+        context: getRequestContext(request),
+        diff: {
+          before: { status: analysisRequest.status },
+          after: { status: updatedStatus },
+        },
+        details: {
+          invoice_id: analysisRequest.invoice_id,
+          invoice_name: analysisRequest.invoice_name || null,
+          employee_id: analysisRequest.employee_id,
+          employee_name: analysisRequest.employee_name || null,
+          subject: analysisRequest.subject,
+        },
+      })
     }
 
     return NextResponse.json({ success: true })

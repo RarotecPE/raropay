@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getSession, canViewAllExpenses } from '@/lib/auth'
+import { auditClient, getRequestContext } from '@/lib/audit'
 
 // Listar veículos
 export async function GET(request: NextRequest) {
@@ -57,13 +58,54 @@ export async function POST(request: NextRequest) {
     const finalOwnerType = canViewAllExpenses(session.role) ? (owner_type || 'company') : 'employee'
     const finalOwnerId = finalOwnerType === 'employee' ? session.id : (owner_id || null)
 
+    let ownerName: string | null = null
+    if (finalOwnerId) {
+      const [ownerRow] = await sql`SELECT name FROM users WHERE id = ${finalOwnerId}`
+      ownerName = ownerRow?.name ? String(ownerRow.name) : null
+    }
+
     const result = await sql`
       INSERT INTO vehicles (plate, model, brand, year, fuel_type, km_per_liter, owner_type, owner_id)
       VALUES (${plate.toUpperCase()}, ${model}, ${brand}, ${year || null}, ${fuel_type || null}, ${km_per_liter || null}, ${finalOwnerType}, ${finalOwnerId})
       RETURNING *
     `
 
-    return NextResponse.json(result[0], { status: 201 })
+    const created = result[0]
+    if (created) {
+      auditClient.log({
+        category: 'fleet',
+        action: 'vehicle.created',
+        severity: 'INFO',
+        actor: {
+          type: 'user',
+          userId: String(session.id),
+          name: session.name,
+          email: session.email,
+          role: session.role,
+        },
+        targets: [
+          { type: 'vehicle', id: String(created.id), label: `${created.brand} ${created.model} (${created.plate})` },
+          ...(finalOwnerId && ownerName
+            ? [{ type: 'user', id: String(finalOwnerId), label: ownerName }]
+            : []),
+        ],
+        context: getRequestContext(request),
+        details: {
+          vehicle_id: created.id,
+          plate: created.plate,
+          brand: created.brand,
+          model: created.model,
+          year: created.year,
+          fuel_type: created.fuel_type,
+          km_per_liter: created.km_per_liter !== null ? Number(created.km_per_liter) : null,
+          owner_type: created.owner_type,
+          owner_id: finalOwnerId,
+          owner_name: ownerName,
+        },
+      })
+    }
+
+    return NextResponse.json(created, { status: 201 })
   } catch (error) {
     console.error('Erro ao criar veículo:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

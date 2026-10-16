@@ -73,8 +73,21 @@ export async function PATCH(
     }
 
     const { id } = await params
+    const batchId = parseInt(id)
     const body = await request.json()
     const { status, rejection_reason, reviewed_by, expense_ids_for_correction, observations, finance_observations } = body
+
+    const [beforeBatch] = await sql`
+      SELECT b.*, u.name as user_name, u.email as user_email
+      FROM expense_batches b
+      JOIN users u ON b.user_id = u.id
+      WHERE b.id = ${batchId}
+    `
+    if (!beforeBatch) {
+      return NextResponse.json({ error: "Remessa não encontrada" }, { status: 404 })
+    }
+    const ownerName = String(beforeBatch.user_name || `Usuário #${beforeBatch.user_id}`)
+    const { auditClient, getRequestContext } = await import("@/lib/audit")
 
     // Se for apenas edição de observações (sem status)
     if (!status && (observations !== undefined || finance_observations !== undefined)) {
@@ -89,13 +102,44 @@ export async function PATCH(
           observations = COALESCE(${observations}, observations),
           finance_observations = COALESCE(${finance_observations}, finance_observations),
           updated_at = NOW()
-        WHERE id = ${parseInt(id)}
+        WHERE id = ${batchId}
         RETURNING *
       `
 
-      if (!updated) {
-        return NextResponse.json({ error: 'Remessa não encontrada' }, { status: 404 })
-      }
+      auditClient.log({
+        category: "finance",
+        action: "batch.updated",
+        severity: "INFO",
+        actor: {
+          type: "user",
+          userId: String(session.id),
+          name: session.name,
+          email: session.email,
+          role: session.role,
+        },
+        targets: [
+          { type: "batch", id: String(batchId), label: `Remessa #${batchId} - ${ownerName}` },
+          { type: "user", id: String(beforeBatch.user_id), label: ownerName },
+        ],
+        context: getRequestContext(request),
+        diff: {
+          before: {
+            observations: beforeBatch.observations ?? null,
+            finance_observations: beforeBatch.finance_observations ?? null,
+          },
+          after: {
+            observations: updated.observations ?? null,
+            finance_observations: updated.finance_observations ?? null,
+          },
+        },
+        details: {
+          batch_id: batchId,
+          user_id: beforeBatch.user_id,
+          user_name: ownerName,
+          observations: updated.observations ?? null,
+          finance_observations: updated.finance_observations ?? null,
+        },
+      })
 
       return NextResponse.json(updated)
     }
@@ -111,7 +155,7 @@ export async function PATCH(
     if (status === 'correction' && expense_ids_for_correction && expense_ids_for_correction.length > 0) {
       // Contar total de despesas na remessa
       const [countResult] = await sql`
-        SELECT COUNT(*) as total FROM expenses WHERE batch_id = ${parseInt(id)}
+        SELECT COUNT(*) as total FROM expenses WHERE batch_id = ${batchId}
       `
       const totalExpenses = parseInt(countResult.total)
       
@@ -131,13 +175,9 @@ export async function PATCH(
         reviewed_by = ${reviewed_by || null},
         reviewed_at = NOW(),
         updated_at = NOW()
-      WHERE id = ${parseInt(id)}
+      WHERE id = ${batchId}
       RETURNING *
     `
-
-    if (!batch) {
-      return NextResponse.json({ error: "Remessa não encontrada" }, { status: 404 })
-    }
 
     // Se aprovado, atualizar apenas as despesas que estão na remessa para approved
     if (status === 'approved') {
@@ -148,7 +188,7 @@ export async function PATCH(
           reviewed_by = ${reviewed_by || null},
           reviewed_at = NOW(),
           updated_at = NOW()
-        WHERE batch_id = ${parseInt(id)} AND status NOT IN ('rejected', 'correction')
+        WHERE batch_id = ${batchId} AND status NOT IN ('rejected', 'correction')
       `
     }
 
@@ -165,29 +205,31 @@ export async function PATCH(
           updated_at = NOW(),
           original_batch_id = COALESCE(original_batch_id, batch_id),
           batch_id = NULL
-        WHERE batch_id = ${parseInt(id)} AND status NOT IN ('approved')
+        WHERE batch_id = ${batchId} AND status NOT IN ('approved')
       `
       
       // Verificar se restam despesas aprovadas na remessa
       const [remaining] = await sql`
-        SELECT COUNT(*) as count FROM expenses WHERE batch_id = ${parseInt(id)}
+        SELECT COUNT(*) as count FROM expenses WHERE batch_id = ${batchId}
       `
       
       if (parseInt(remaining.count) === 0) {
         // Não restam despesas - cancelar remessa
-        await sql`
+        const [cancelledBatch] = await sql`
           UPDATE expense_batches SET status = 'cancelled', updated_at = NOW()
-          WHERE id = ${parseInt(id)}
+          WHERE id = ${batchId}
+          RETURNING *
         `
+        if (cancelledBatch) {
+          batch = cancelledBatch
+        }
       }
-      // Se restam despesas aprovadas, a remessa continua como "approved"
     }
 
     // Se precisa correção, atualizar despesas selecionadas para correction
     // Despesas PERMANECEM na remessa - apenas mudam de status
     if (status === 'correction') {
       if (expense_ids_for_correction && expense_ids_for_correction.length > 0) {
-        // Atualizar apenas as despesas selecionadas para correção
         for (const expenseId of expense_ids_for_correction) {
           await sql`
             UPDATE expenses 
@@ -196,11 +238,10 @@ export async function PATCH(
               rejection_reason = ${rejection_reason || null},
               updated_at = NOW(),
               original_batch_id = COALESCE(original_batch_id, batch_id)
-            WHERE id = ${expenseId} AND batch_id = ${parseInt(id)}
+            WHERE id = ${expenseId} AND batch_id = ${batchId}
           `
         }
       } else {
-        // Se não especificou despesas, atualizar todas as pendentes
         await sql`
           UPDATE expenses 
           SET 
@@ -208,11 +249,64 @@ export async function PATCH(
             rejection_reason = ${rejection_reason || null},
             updated_at = NOW(),
             original_batch_id = COALESCE(original_batch_id, batch_id)
-          WHERE batch_id = ${parseInt(id)} AND status IN ('pending', 'submitted')
+          WHERE batch_id = ${batchId} AND status IN ('pending', 'submitted')
         `
       }
-      // Remessa permanece como "correction" aguardando usuário corrigir
     }
+
+    const actionMap: Record<string, string> = {
+      approved: "batch.approved",
+      rejected: "batch.rejected",
+      correction: "batch.correction_requested",
+    }
+
+    auditClient.log({
+      category: "finance",
+      action: actionMap[status] || "batch.updated",
+      severity: status === "rejected" || status === "correction" ? "WARNING" : "INFO",
+      actor: {
+        type: "user",
+        userId: String(session.id),
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      },
+      targets: [
+        {
+          type: "batch",
+          id: String(batchId),
+          label: `Remessa #${batchId} - ${ownerName} (R$ ${Number(beforeBatch.total_amount || 0).toFixed(2)})`,
+        },
+        {
+          type: "user",
+          id: String(beforeBatch.user_id),
+          label: ownerName,
+        },
+      ],
+      context: getRequestContext(request),
+      diff: {
+        before: {
+          status: beforeBatch.status,
+          rejection_reason: beforeBatch.rejection_reason ?? null,
+        },
+        after: {
+          status: batch.status,
+          rejection_reason: batch.rejection_reason ?? null,
+        },
+      },
+      details: {
+        batch_id: batchId,
+        user_id: beforeBatch.user_id,
+        user_name: ownerName,
+        settlement_type: beforeBatch.settlement_type,
+        total_amount: Number(beforeBatch.total_amount || 0),
+        previous_status: beforeBatch.status,
+        new_status: batch.status,
+        requested_action_status: status,
+        rejection_reason: rejection_reason || null,
+        expense_ids_for_correction: expense_ids_for_correction || null,
+      },
+    })
 
     return NextResponse.json(batch)
   } catch (error) {

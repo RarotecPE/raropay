@@ -454,7 +454,54 @@ export async function POST(request: NextRequest) {
       VALUES (${result[0].id}, 'Despesa criada', ${session.id}, ${finalStatus})
     `
 
-    return NextResponse.json(result[0], { status: 201 })
+    const created = result[0]
+    if (created && finalStatus !== 'draft') {
+      const { auditClient, getRequestContext } = await import('@/lib/audit')
+      auditClient.log({
+        category: 'finance',
+        action: 'expense.created',
+        severity: exceedsLimit ? 'WARNING' : 'INFO',
+        actor: {
+          type: 'user',
+          userId: String(session.id),
+          name: session.name,
+          email: session.email,
+          role: session.role,
+        },
+        targets: [
+          {
+            type: 'expense',
+            id: String(created.id),
+            label: `Despesa #${created.id} - ${category} (R$ ${parsedAmount.toFixed(2)})`,
+          },
+          {
+            type: 'user',
+            id: String(session.id),
+            label: `${session.name} (${session.email})`,
+          },
+        ],
+        context: getRequestContext(request),
+        details: {
+          expense_id: created.id,
+          user_id: session.id,
+          user_name: session.name,
+          expense_type,
+          category,
+          description: description || null,
+          amount: parsedAmount,
+          expense_date,
+          municipality: municipality || null,
+          state: state || null,
+          status: finalStatus,
+          receipt_pathname: created.receipt_pathname || receipt_pathname || null,
+          ...(created.odometer_photos ? { odometer_photos: created.odometer_photos } : {}),
+          exceeds_limit: exceedsLimit,
+          limit_exceeded_reason: limitExceededReason,
+        },
+      })
+    }
+
+    return NextResponse.json(created, { status: 201 })
   } catch (error) {
     console.error('[v0] Erro ao criar despesa:', error)
     return NextResponse.json({ error: 'Erro interno do servidor', details: String(error) }, { status: 500 })

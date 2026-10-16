@@ -390,7 +390,81 @@ export async function PUT(
       `
     }
 
-    return NextResponse.json(result[0])
+    const updatedExpense = result[0]
+    if (updatedExpense && newStatus !== 'draft') {
+      const { auditClient, getRequestContext } = await import('@/lib/audit')
+      const wasDraft = expense.status === 'draft'
+      auditClient.log({
+        category: 'finance',
+        action: wasDraft ? 'expense.created' : 'expense.updated',
+        severity: exceedsLimit ? 'WARNING' : 'INFO',
+        actor: {
+          type: 'user',
+          userId: String(session.id),
+          name: session.name,
+          email: session.email,
+          role: session.role,
+        },
+        targets: [
+          {
+            type: 'expense',
+            id: String(expenseId),
+            label: `Despesa #${expenseId} - ${category} (R$ ${parsedAmount.toFixed(2)})`,
+          },
+          {
+            type: 'user',
+            id: String(session.id),
+            label: `${session.name} (${session.email})`,
+          },
+        ],
+        context: getRequestContext(request),
+        diff: wasDraft
+          ? undefined
+          : {
+              before: {
+                expense_type: expense.expense_type,
+                category: expense.category,
+                description: expense.description ?? null,
+                amount: Number(expense.amount),
+                expense_date: expense.expense_date,
+                municipality: expense.municipality ?? null,
+                state: expense.state ?? null,
+                status: expense.status,
+                receipt_pathname: expense.receipt_pathname ?? null,
+              },
+              after: {
+                expense_type: updatedExpense.expense_type,
+                category: updatedExpense.category,
+                description: updatedExpense.description ?? null,
+                amount: Number(updatedExpense.amount),
+                expense_date: updatedExpense.expense_date,
+                municipality: updatedExpense.municipality ?? null,
+                state: updatedExpense.state ?? null,
+                status: updatedExpense.status,
+                receipt_pathname: updatedExpense.receipt_pathname ?? null,
+              },
+            },
+        details: {
+          expense_id: expenseId,
+          user_id: session.id,
+          user_name: session.name,
+          expense_type: updatedExpense.expense_type,
+          category: updatedExpense.category,
+          description: updatedExpense.description ?? null,
+          amount: Number(updatedExpense.amount),
+          expense_date: updatedExpense.expense_date,
+          municipality: updatedExpense.municipality ?? null,
+          state: updatedExpense.state ?? null,
+          status: updatedExpense.status,
+          receipt_pathname: updatedExpense.receipt_pathname ?? null,
+          ...(updatedExpense.odometer_photos ? { odometer_photos: updatedExpense.odometer_photos } : {}),
+          exceeds_limit: exceedsLimit,
+          limit_exceeded_reason: limitExceededReason,
+        },
+      })
+    }
+
+    return NextResponse.json(updatedExpense)
   } catch (error) {
     console.error('Erro ao atualizar despesa:', error)
     return NextResponse.json(
@@ -423,7 +497,10 @@ export async function PATCH(
 
     // Verificar se a despesa existe
     const existing = await sql`
-      SELECT * FROM expenses WHERE id = ${expenseId}
+      SELECT e.*, u.name as user_name, u.email as user_email
+      FROM expenses e
+      LEFT JOIN users u ON u.id = e.user_id
+      WHERE e.id = ${expenseId}
     `
 
     if (existing.length === 0) {
@@ -453,9 +530,6 @@ export async function PATCH(
     const approverId = reviewed_by || session.id
 
     // Atualizar a despesa
-    // - Rejeitadas: SAEM da remessa (batch_id = NULL), só aparecem no histórico
-    // - Em correção: PERMANECEM na remessa, aguardando usuário corrigir
-    // - Aprovadas: PERMANECEM na remessa
     const shouldRemoveFromBatch = status === 'rejected'
     
     const result = await sql`
@@ -484,8 +558,6 @@ export async function PATCH(
     `
 
     // Verificar e atualizar status da remessa
-    // Despesas rejeitadas já foram removidas da remessa (batch_id = NULL)
-    // Despesas em correção permanecem na remessa
     if (expense.batch_id) {
       const statusCounts = await sql`
         SELECT 
@@ -503,14 +575,7 @@ export async function PATCH(
       const approvedCount = parseInt(counts.approved_count)
       const totalCount = parseInt(counts.total_count)
       
-      // Determinar status da remessa:
-      // - "approved": todas as despesas restantes aprovadas (sem pendentes, sem correção)
-      // - "correction": há despesas em correção - remessa FICA NA ANÁLISE aguardando
-      // - "pending": há despesas pendentes de análise
-      // - "cancelled": não restam despesas na remessa
-      
       if (totalCount === 0) {
-        // Todas as despesas foram rejeitadas - cancelar remessa
         await sql`
           UPDATE expense_batches SET
             status = 'cancelled',
@@ -519,7 +584,6 @@ export async function PATCH(
           WHERE id = ${expense.batch_id}
         `
       } else if (pendingCount === 0 && correctionCount === 0 && approvedCount > 0) {
-        // Todas as despesas restantes foram aprovadas
         await sql`
           UPDATE expense_batches SET
             status = 'approved',
@@ -534,7 +598,6 @@ export async function PATCH(
           WHERE id = ${expense.batch_id}
         `
       } else if (correctionCount > 0) {
-        // Há despesas em correção - remessa PERMANECE NA ANÁLISE com status "correction"
         await sql`
           UPDATE expense_batches SET
             status = 'correction',
@@ -547,7 +610,6 @@ export async function PATCH(
           WHERE id = ${expense.batch_id}
         `
       } else if (pendingCount > 0) {
-        // Ainda há despesas pendentes de análise
         await sql`
           UPDATE expense_batches SET
             status = 'pending',
@@ -561,6 +623,60 @@ export async function PATCH(
         `
       }
     }
+
+    const ownerName = String(expense.user_name || `Usuário #${expense.user_id}`)
+    const auditActionMap: Record<string, string> = {
+      approved: 'expense.approved',
+      rejected: 'expense.rejected',
+      correction: 'expense.correction_requested',
+    }
+    const { auditClient, getRequestContext } = await import('@/lib/audit')
+    auditClient.log({
+      category: 'finance',
+      action: auditActionMap[status] || 'expense.updated',
+      severity: status === 'rejected' || status === 'correction' ? 'WARNING' : 'INFO',
+      actor: {
+        type: 'user',
+        userId: String(session.id),
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      },
+      targets: [
+        {
+          type: 'expense',
+          id: String(expenseId),
+          label: `Despesa #${expenseId} - ${ownerName} (R$ ${Number(expense.amount).toFixed(2)})`,
+        },
+        {
+          type: 'user',
+          id: String(expense.user_id),
+          label: ownerName,
+        },
+      ],
+      context: getRequestContext(request),
+      diff: {
+        before: {
+          status: expense.status,
+          rejection_reason: expense.rejection_reason ?? null,
+        },
+        after: {
+          status,
+          rejection_reason: (status === 'rejected' || status === 'correction') ? rejection_reason : null,
+        },
+      },
+      details: {
+        expense_id: expenseId,
+        user_id: expense.user_id,
+        user_name: ownerName,
+        category: expense.category,
+        description: expense.description ?? null,
+        amount: Number(expense.amount),
+        previous_status: expense.status,
+        new_status: status,
+        rejection_reason: rejection_reason || null,
+      },
+    })
 
     return NextResponse.json(result[0])
   } catch (error) {
@@ -589,7 +705,10 @@ export async function DELETE(
 
     // Verificar se a despesa existe
     const existing = await sql`
-      SELECT * FROM expenses WHERE id = ${expenseId}
+      SELECT e.*, u.name as user_name
+      FROM expenses e
+      LEFT JOIN users u ON u.id = e.user_id
+      WHERE e.id = ${expenseId}
     `
 
     if (existing.length === 0) {
@@ -706,6 +825,49 @@ export async function DELETE(
     
     // Aguardar deleção dos arquivos (não crítico, pode falhar)
     await Promise.allSettled(deletePromises)
+
+    if (expense.status !== 'draft') {
+      const ownerName = String(expense.user_name || session.name || `Usuário #${expense.user_id}`)
+      const { auditClient, getRequestContext } = await import('@/lib/audit')
+      auditClient.log({
+        category: 'finance',
+        action: 'expense.deleted',
+        severity: 'WARNING',
+        actor: {
+          type: 'user',
+          userId: String(session.id),
+          name: session.name,
+          email: session.email,
+          role: session.role,
+        },
+        targets: [
+          {
+            type: 'expense',
+            id: String(expenseId),
+            label: `Despesa #${expenseId} - ${ownerName} (R$ ${Number(expense.amount).toFixed(2)})`,
+          },
+          {
+            type: 'user',
+            id: String(expense.user_id),
+            label: ownerName,
+          },
+        ],
+        context: getRequestContext(request),
+        details: {
+          expense_id: expenseId,
+          user_id: expense.user_id,
+          user_name: ownerName,
+          expense_type: expense.expense_type,
+          category: expense.category,
+          description: expense.description ?? null,
+          amount: Number(expense.amount),
+          expense_date: expense.expense_date,
+          status: expense.status,
+          receipt_pathname: expense.receipt_pathname ?? null,
+          deleted_files_count: filesToDelete.length,
+        },
+      })
+    }
 
     return NextResponse.json({ 
       success: true, 

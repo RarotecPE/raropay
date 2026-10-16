@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
 import { getCategoryLabel, getExpenseTypeLabel } from "@/lib/format"
+import { auditClient, getRequestContext } from "@/lib/audit"
 
 // PATCH - Editar despesa vinculada a uma solicitação de análise
 export async function PATCH(
@@ -31,7 +32,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Solicitação ou despesa não encontrada" }, { status: 404 })
     }
 
-    const analysisRequest = requests[0]
+    const analysisRequest = requests[0] as any
 
     // Verificar permissão - apenas o funcionário da solicitação pode editar
     if (analysisRequest.employee_id !== user.id) {
@@ -47,7 +48,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Despesa não encontrada ou não pertence a você" }, { status: 404 })
     }
 
-    const oldExpense = expenses[0]
+    const oldExpense = expenses[0] as any
 
     // Atualizar a despesa
     const updated = await sql`
@@ -66,6 +67,8 @@ export async function PATCH(
       WHERE id = ${parseInt(expenseId)}
       RETURNING *
     `
+
+    const newExpense = updated[0] as any
 
     // Registrar a edição na tabela de vínculo
     const changes = []
@@ -118,9 +121,64 @@ export async function PATCH(
           WHERE id = ${parseInt(id)}
         `
       }
+
+      auditClient.log({
+        category: "finance",
+        action: "expense.updated",
+        severity: "INFO",
+        actor: {
+          type: "user",
+          userId: String(user.id),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        targets: [
+          {
+            type: "expense",
+            id: String(newExpense.id),
+            label: newExpense.description,
+          },
+          {
+            type: "invoice_analysis_request",
+            id: String(analysisRequest.id),
+            label: analysisRequest.subject,
+          },
+        ],
+        context: getRequestContext(request),
+        diff: {
+          before: {
+            description: oldExpense.description,
+            amount: Number(oldExpense.amount),
+            expense_date: oldExpense.expense_date,
+            category: oldExpense.category,
+            expense_type: oldExpense.expense_type,
+            km_before: oldExpense.km_before,
+            km_after: oldExpense.km_after,
+            total_km: oldExpense.total_km,
+            receipt_pathname: oldExpense.receipt_pathname,
+          },
+          after: {
+            description: newExpense.description,
+            amount: Number(newExpense.amount),
+            expense_date: newExpense.expense_date,
+            category: newExpense.category,
+            expense_type: newExpense.expense_type,
+            km_before: newExpense.km_before,
+            km_after: newExpense.km_after,
+            total_km: newExpense.total_km,
+            receipt_pathname: newExpense.receipt_pathname,
+          },
+        },
+        details: {
+          analysis_request_id: analysisRequest.id,
+          analysis_subject: analysisRequest.subject,
+          changes_summary: changes,
+        },
+      })
     }
 
-    return NextResponse.json(updated[0])
+    return NextResponse.json(newExpense)
   } catch (error) {
     console.error("Erro ao editar despesa:", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })

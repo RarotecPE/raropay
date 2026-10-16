@@ -186,7 +186,49 @@ export async function POST(request: Request) {
       RETURNING *
     `
 
-    return NextResponse.json(result[0], { status: 201 })
+    const created = result[0]
+    if (created) {
+      const { auditClient, getRequestContext } = await import("@/lib/audit")
+      auditClient.log({
+        category: "advances",
+        action: "advance.requested",
+        severity: "INFO",
+        actor: {
+          type: "user",
+          userId: String(user.id),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        targets: [
+          {
+            type: "advance_request",
+            id: String(created.id),
+            label: `Adiantamento #${created.id} - ${user.name} (R$ ${numericAmount.toFixed(2)})`,
+          },
+          {
+            type: "user",
+            id: String(user.id),
+            label: `${user.name} (${user.email})`,
+          },
+        ],
+        context: getRequestContext(request),
+        details: {
+          request_id: created.id,
+          employee_id: user.id,
+          employee_name: user.name,
+          amount: numericAmount,
+          payment_method,
+          categories: categoryList,
+          reason: reason.trim(),
+          city: city || null,
+          usage_start: usage_start || null,
+          usage_end: usage_end || null,
+        },
+      })
+    }
+
+    return NextResponse.json(created, { status: 201 })
   } catch (error) {
     console.error("Erro ao criar solicitação de adiantamento:", error)
     return NextResponse.json({ error: "Erro interno" }, { status: 500 })

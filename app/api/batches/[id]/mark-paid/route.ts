@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getSession } from '@/lib/auth'
+import { auditClient, getRequestContext } from '@/lib/audit'
 
 export async function POST(
   request: NextRequest,
@@ -24,7 +25,10 @@ export async function POST(
 
     // Verificar se a remessa existe e está aprovada
     const [batch] = await sql`
-      SELECT * FROM expense_batches WHERE id = ${batchId}
+      SELECT b.*, u.name as user_name
+      FROM expense_batches b
+      JOIN users u ON b.user_id = u.id
+      WHERE b.id = ${batchId}
     `
 
     if (!batch) {
@@ -56,6 +60,46 @@ export async function POST(
         VALUES (${expense.id}, 'Pagamento registrado (via remessa)', ${session.id}, 'Marcado como pago através da remessa')
       `
     }
+
+    const ownerName = String(batch.user_name || `Usuário #${batch.user_id}`)
+    auditClient.log({
+      category: 'finance',
+      action: 'batch.paid',
+      severity: 'INFO',
+      actor: {
+        type: 'user',
+        userId: String(session.id),
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      },
+      targets: [
+        {
+          type: 'batch',
+          id: String(batchId),
+          label: `Remessa #${batchId} - ${ownerName} (R$ ${Number(batch.total_amount || 0).toFixed(2)})`,
+        },
+        {
+          type: 'user',
+          id: String(batch.user_id),
+          label: ownerName,
+        },
+      ],
+      context: getRequestContext(request),
+      diff: {
+        before: { paid: false },
+        after: { paid: true },
+      },
+      details: {
+        batch_id: batchId,
+        user_id: batch.user_id,
+        user_name: ownerName,
+        settlement_type: batch.settlement_type,
+        total_amount: Number(batch.total_amount || 0),
+        paid_expenses_count: expenses.length,
+        expense_ids: expenses.map((e: any) => e.id),
+      },
+    })
 
     return NextResponse.json({ success: true, message: 'Remessa marcada como paga' })
   } catch (error) {

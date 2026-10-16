@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
+import { auditClient, getRequestContext } from "@/lib/audit"
 
 const monthNames = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -106,7 +107,37 @@ export async function POST(request: Request) {
       RETURNING *
     `
 
-    return NextResponse.json(result[0], { status: 201 })
+    const createdInvoice = result[0] as any
+    auditClient.log({
+      category: "finance",
+      action: "card_invoice.created",
+      severity: "INFO",
+      actor: {
+        type: "user",
+        userId: String(user.id),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      targets: [
+        {
+          type: "card_invoice",
+          id: String(createdInvoice.id),
+          label: createdInvoice.reference_name,
+        },
+      ],
+      context: getRequestContext(request),
+      details: {
+        reference_month: createdInvoice.reference_month,
+        reference_name: createdInvoice.reference_name,
+        start_date: createdInvoice.start_date,
+        end_date: createdInvoice.end_date,
+        due_date: createdInvoice.due_date,
+        notes: createdInvoice.notes || null,
+      },
+    })
+
+    return NextResponse.json(createdInvoice, { status: 201 })
   } catch (error) {
     console.error("Erro ao criar fatura:", error)
     return NextResponse.json({ error: "Erro ao criar fatura" }, { status: 500 })

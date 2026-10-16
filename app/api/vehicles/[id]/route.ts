@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getSession, canManageUsers } from '@/lib/auth'
+import { auditClient, getRequestContext } from '@/lib/audit'
 
 // Buscar veículo específico
 export async function GET(
@@ -59,10 +60,26 @@ export async function PUT(
       return NextResponse.json({ error: 'Placa, modelo e marca são obrigatórios' }, { status: 400 })
     }
 
+    const [beforeVehicle] = await sql`
+      SELECT v.*, u.name as owner_name
+      FROM vehicles v
+      LEFT JOIN users u ON v.owner_id = u.id
+      WHERE v.id = ${vehicleId}
+    `
+    if (!beforeVehicle) {
+      return NextResponse.json({ error: 'Veículo não encontrado' }, { status: 404 })
+    }
+
     // Verificar se placa já existe em outro veículo
     const existing = await sql`SELECT id FROM vehicles WHERE plate = ${plate.toUpperCase()} AND id != ${vehicleId}`
     if (existing.length > 0) {
       return NextResponse.json({ error: 'Placa já cadastrada em outro veículo' }, { status: 400 })
+    }
+
+    let nextOwnerName: string | null = null
+    if (owner_id) {
+      const [ownerRow] = await sql`SELECT name FROM users WHERE id = ${owner_id}`
+      nextOwnerName = ownerRow?.name ? String(ownerRow.name) : null
     }
 
     const result = await sql`
@@ -80,11 +97,55 @@ export async function PUT(
       RETURNING *
     `
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: 'Veículo não encontrado' }, { status: 404 })
-    }
+    const updated = result[0]
+    auditClient.log({
+      category: 'fleet',
+      action: 'vehicle.updated',
+      severity: 'INFO',
+      actor: {
+        type: 'user',
+        userId: String(session.id),
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      },
+      targets: [
+        { type: 'vehicle', id: String(vehicleId), label: `${updated.brand} ${updated.model} (${updated.plate})` },
+      ],
+      context: getRequestContext(request),
+      diff: {
+        before: {
+          plate: beforeVehicle.plate,
+          brand: beforeVehicle.brand,
+          model: beforeVehicle.model,
+          year: beforeVehicle.year ?? null,
+          fuel_type: beforeVehicle.fuel_type ?? null,
+          km_per_liter: beforeVehicle.km_per_liter !== null ? Number(beforeVehicle.km_per_liter) : null,
+          owner_type: beforeVehicle.owner_type,
+          owner_name: beforeVehicle.owner_name ?? null,
+        },
+        after: {
+          plate: updated.plate,
+          brand: updated.brand,
+          model: updated.model,
+          year: updated.year ?? null,
+          fuel_type: updated.fuel_type ?? null,
+          km_per_liter: updated.km_per_liter !== null ? Number(updated.km_per_liter) : null,
+          owner_type: updated.owner_type,
+          owner_name: nextOwnerName,
+        },
+      },
+      details: {
+        vehicle_id: vehicleId,
+        plate: updated.plate,
+        brand: updated.brand,
+        model: updated.model,
+        owner_type: updated.owner_type,
+        owner_name: nextOwnerName,
+      },
+    })
 
-    return NextResponse.json(result[0])
+    return NextResponse.json(updated)
   } catch (error) {
     console.error('Erro ao atualizar veículo:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
@@ -109,8 +170,41 @@ export async function DELETE(
     const { id } = await params
     const vehicleId = parseInt(id)
 
+    const [beforeVehicle] = await sql`
+      SELECT v.*, u.name as owner_name
+      FROM vehicles v
+      LEFT JOIN users u ON v.owner_id = u.id
+      WHERE v.id = ${vehicleId}
+    `
+
     // Desativar em vez de excluir (soft delete)
     await sql`UPDATE vehicles SET active = false, updated_at = NOW() WHERE id = ${vehicleId}`
+
+    if (beforeVehicle) {
+      auditClient.log({
+        category: 'fleet',
+        action: 'vehicle.deactivated',
+        severity: 'WARNING',
+        actor: {
+          type: 'user',
+          userId: String(session.id),
+          name: session.name,
+          email: session.email,
+          role: session.role,
+        },
+        targets: [
+          { type: 'vehicle', id: String(vehicleId), label: `${beforeVehicle.brand} ${beforeVehicle.model} (${beforeVehicle.plate})` },
+        ],
+        context: getRequestContext(request),
+        details: {
+          vehicle_id: vehicleId,
+          plate: beforeVehicle.plate,
+          brand: beforeVehicle.brand,
+          model: beforeVehicle.model,
+          owner_name: beforeVehicle.owner_name ?? null,
+        },
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

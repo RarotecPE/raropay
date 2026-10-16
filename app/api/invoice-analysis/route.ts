@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
+import { auditClient, getRequestContext } from "@/lib/audit"
 
 // GET - Listar solicitações de análise
 export async function GET(request: Request) {
@@ -122,6 +123,56 @@ export async function POST(request: Request) {
         `
       }
     }
+
+    const metaRows = await sql`
+      SELECT u.name as employee_name, u.email as employee_email, ci.reference_name as invoice_name
+      FROM users u
+      CROSS JOIN card_invoices ci
+      WHERE u.id = ${employee_id} AND ci.id = ${invoice_id}
+      LIMIT 1
+    `
+    const meta = (metaRows[0] as any) || {}
+
+    auditClient.log({
+      category: "finance",
+      action: "card_invoice.analysis_created",
+      severity: "INFO",
+      actor: {
+        type: "user",
+        userId: String(user.id),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      targets: [
+        {
+          type: "invoice_analysis_request",
+          id: String(requestId),
+          label: subject,
+        },
+        {
+          type: "card_invoice",
+          id: String(invoice_id),
+          label: meta.invoice_name || `Fatura #${invoice_id}`,
+        },
+        {
+          type: "user",
+          id: String(employee_id),
+          label: meta.employee_name || `Colaborador #${employee_id}`,
+        },
+      ],
+      context: getRequestContext(request),
+      details: {
+        invoice_id,
+        invoice_name: meta.invoice_name || null,
+        employee_id,
+        employee_name: meta.employee_name || null,
+        employee_email: meta.employee_email || null,
+        subject,
+        attachments_count: Array.isArray(attachments) ? attachments.length : 0,
+        linked_expenses_count: Array.isArray(linked_expenses) ? linked_expenses.length : 0,
+      },
+    })
 
     return NextResponse.json(result[0], { status: 201 })
   } catch (error) {

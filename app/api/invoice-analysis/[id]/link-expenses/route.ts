@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
+import { auditClient, getRequestContext } from "@/lib/audit"
 
 export async function POST(
   request: Request,
@@ -16,14 +17,18 @@ export async function POST(
 
     const requestId = parseInt(id)
     const analysisRequest = await sql`
-      SELECT * FROM invoice_analysis_requests WHERE id = ${requestId}
+      SELECT iar.*, u.name as employee_name, ci.reference_name as invoice_name
+      FROM invoice_analysis_requests iar
+      LEFT JOIN users u ON u.id = iar.employee_id
+      LEFT JOIN card_invoices ci ON ci.id = iar.invoice_id
+      WHERE iar.id = ${requestId}
     `
 
     if (analysisRequest.length === 0) {
       return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 })
     }
 
-    const requestData = analysisRequest[0]
+    const requestData = analysisRequest[0] as any
 
     if (requestData.requester_id !== user.id && user.role !== "admin" && user.role !== "financial") {
       return NextResponse.json({ error: "Sem permissão para adicionar despesas" }, { status: 403 })
@@ -54,7 +59,7 @@ export async function POST(
 
     if (addedExpenses.length > 0) {
       const expenseDescriptions = await sql`
-        SELECT description, amount FROM expenses WHERE id = ANY(${addedExpenses})
+        SELECT id, description, amount FROM expenses WHERE id = ANY(${addedExpenses})
       `
 
       const expenseList = (expenseDescriptions as any[])
@@ -75,6 +80,49 @@ export async function POST(
           WHERE id = ${requestId}
         `
       }
+
+      auditClient.log({
+        category: "finance",
+        action: "card_invoice.expense_linked",
+        severity: "INFO",
+        actor: {
+          type: "user",
+          userId: String(user.id),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        targets: [
+          {
+            type: "invoice_analysis_request",
+            id: String(requestId),
+            label: requestData.subject,
+          },
+          {
+            type: "card_invoice",
+            id: String(requestData.invoice_id),
+            label: requestData.invoice_name || `Fatura #${requestData.invoice_id}`,
+          },
+          {
+            type: "user",
+            id: String(requestData.employee_id),
+            label: requestData.employee_name || `Colaborador #${requestData.employee_id}`,
+          },
+        ],
+        context: getRequestContext(request),
+        details: {
+          invoice_id: requestData.invoice_id,
+          invoice_name: requestData.invoice_name || null,
+          employee_id: requestData.employee_id,
+          employee_name: requestData.employee_name || null,
+          added_expense_ids: addedExpenses,
+          linked_expenses: (expenseDescriptions as any[]).map((e) => ({
+            id: e.id,
+            description: e.description,
+            amount: Number(e.amount),
+          })),
+        },
+      })
     }
 
     return NextResponse.json({

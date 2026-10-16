@@ -259,9 +259,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar dados bancários do usuário para incluir na remessa
+    // Buscar dados bancários e nome do usuário para incluir na remessa e no log
     const [userData] = await sql`
-      SELECT bank_account, pix_key FROM users WHERE id = ${user_id}
+      SELECT id, name, email, role, bank_account, pix_key FROM users WHERE id = ${user_id}
     `
 
     // Verificar se todas as despesas pertencem ao usuário e estão processadas ou em correção
@@ -343,6 +343,45 @@ export async function POST(request: NextRequest) {
       SET batch_id = ${batch.id}, status = 'submitted', updated_at = NOW()
       WHERE id = ANY(${expenseIdsArray})
     `
+
+    const session = await getSession().catch(() => null)
+    const ownerName = String(userData?.name || session?.name || `Usuário #${user_id}`)
+    const { auditClient, getRequestContext } = await import("@/lib/audit")
+    auditClient.log({
+      category: "finance",
+      action: "batch.created",
+      severity: "INFO",
+      actor: {
+        type: "user",
+        userId: String(session?.id || user_id),
+        name: session?.name || ownerName,
+        email: session?.email || userData?.email,
+        role: session?.role || userData?.role,
+      },
+      targets: [
+        {
+          type: "batch",
+          id: String(batch.id),
+          label: `Remessa #${batch.id} - ${ownerName} (R$ ${totalAmount.toFixed(2)})`,
+        },
+        {
+          type: "user",
+          id: String(user_id),
+          label: ownerName,
+        },
+      ],
+      context: getRequestContext(request),
+      details: {
+        batch_id: batch.id,
+        user_id,
+        user_name: ownerName,
+        settlement_type: finalSettlementType,
+        total_amount: totalAmount,
+        total_expenses: expenses.length,
+        expense_ids: expenseIdsArray,
+        observations: observations || null,
+      },
+    })
 
     return NextResponse.json(batch, { status: 201 })
   } catch (error) {

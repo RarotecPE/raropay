@@ -33,9 +33,10 @@ export async function POST(
 
     // Verificar se a despesa existe e está aprovada
     const expenseResult = await sql`
-      SELECT e.*, eb.settlement_type as batch_settlement_type
+      SELECT e.*, eb.settlement_type as batch_settlement_type, u.name as user_name
       FROM expenses e
       LEFT JOIN expense_batches eb ON e.batch_id = eb.id
+      LEFT JOIN users u ON u.id = e.user_id
       WHERE e.id = ${expenseId}
     `
 
@@ -72,9 +73,7 @@ export async function POST(
     `
 
     // Voltar o status da remessa para "pending" para aparecer na tela de análise
-    console.log('[v0] Verificando batch_id para atualizar remessa:', expense.batch_id)
     if (expense.batch_id) {
-      console.log('[v0] Atualizando remessa para pending:', expense.batch_id)
       await sql`
         UPDATE expense_batches
         SET 
@@ -82,10 +81,56 @@ export async function POST(
           updated_at = NOW()
         WHERE id = ${expense.batch_id}
       `
-      console.log('[v0] Remessa atualizada com sucesso')
-    } else {
-      console.log('[v0] Despesa não tem batch_id, remessa não será atualizada')
     }
+
+    const ownerName = String(expense.user_name || `Usuário #${expense.user_id}`)
+    const { auditClient, getRequestContext } = await import('@/lib/audit')
+    auditClient.log({
+      category: 'finance',
+      action: 'expense.unapproved',
+      severity: 'WARNING',
+      actor: {
+        type: 'user',
+        userId: String(session.id),
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      },
+      targets: [
+        {
+          type: 'expense',
+          id: String(expenseId),
+          label: `Despesa #${expenseId} - ${ownerName} (R$ ${Number(expense.amount).toFixed(2)})`,
+        },
+        {
+          type: 'user',
+          id: String(expense.user_id),
+          label: ownerName,
+        },
+      ],
+      context: getRequestContext(request),
+      diff: {
+        before: {
+          status: expense.status,
+          unapproval_reason: expense.unapproval_reason ?? null,
+        },
+        after: {
+          status: 'pending',
+          unapproval_reason: reason.trim(),
+        },
+      },
+      details: {
+        expense_id: expenseId,
+        user_id: expense.user_id,
+        user_name: ownerName,
+        category: expense.category,
+        description: expense.description ?? null,
+        amount: Number(expense.amount),
+        previous_status: expense.status,
+        new_status: 'pending',
+        unapproval_reason: reason.trim(),
+      },
+    })
 
     return NextResponse.json({ 
       success: true,

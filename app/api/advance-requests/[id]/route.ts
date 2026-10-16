@@ -79,11 +79,17 @@ export async function PATCH(
     }
 
     const requests = await sql`
-      SELECT * FROM advance_requests WHERE id = ${requestId}
+      SELECT ar.*, u.name as employee_name, u.email as employee_email
+      FROM advance_requests ar
+      JOIN users u ON u.id = ar.user_id
+      WHERE ar.id = ${requestId}
     `
     if (requests.length === 0) {
       return NextResponse.json({ error: "Solicitação não encontrada" }, { status: 404 })
     }
+
+    const beforeReq = requests[0]
+    const employeeName = String(beforeReq.employee_name || `Colaborador #${beforeReq.user_id}`)
 
     await sql`
       UPDATE advance_requests
@@ -102,6 +108,60 @@ export async function PATCH(
         VALUES (${requestId}, ${user.id}, ${review_note.trim()})
       `
     }
+
+    const { auditClient, getRequestContext } = await import("@/lib/audit")
+    const actionMap: Record<string, string> = {
+      approved: "advance.approved",
+      rejected: "advance.rejected",
+      clarification: "advance.clarification_requested",
+      pending: "advance.status_changed",
+    }
+
+    auditClient.log({
+      category: "advances",
+      action: actionMap[status] || "advance.status_changed",
+      severity: status === "rejected" ? "WARNING" : "INFO",
+      actor: {
+        type: "user",
+        userId: String(user.id),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      targets: [
+        {
+          type: "advance_request",
+          id: String(requestId),
+          label: `Adiantamento #${requestId} - ${employeeName} (R$ ${Number(beforeReq.amount).toFixed(2)})`,
+        },
+        {
+          type: "user",
+          id: String(beforeReq.user_id),
+          label: employeeName,
+        },
+      ],
+      context: getRequestContext(request),
+      diff: {
+        before: {
+          status: beforeReq.status,
+          review_note: beforeReq.review_note ?? null,
+        },
+        after: {
+          status,
+          review_note: review_note || null,
+        },
+      },
+      details: {
+        request_id: requestId,
+        employee_id: beforeReq.user_id,
+        employee_name: employeeName,
+        amount: Number(beforeReq.amount),
+        payment_method: beforeReq.payment_method,
+        previous_status: beforeReq.status,
+        new_status: status,
+        review_note: review_note || null,
+      },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

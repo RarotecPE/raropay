@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { getSession } from "@/lib/auth"
+import { auditClient, getRequestContext } from "@/lib/audit"
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
     const session = await getSession()
     
@@ -25,13 +26,36 @@ export async function DELETE() {
     // 3. Por último as remessas
     const batchesResult = await sql`DELETE FROM expense_batches`
 
+    const deletedCounts = {
+      history: historyResult.count || 0,
+      expenses: expensesResult.count || 0,
+      batches: batchesResult.count || 0,
+    }
+
+    auditClient.log({
+      category: "finance",
+      action: "admin.clear_expenses",
+      severity: "CRITICAL",
+      actor: {
+        type: "user",
+        userId: String(session.id),
+        name: session.name,
+        email: session.email,
+        role: session.role,
+      },
+      targets: [
+        { type: "financial_history", id: "all", label: "Histórico Geral de Despesas" },
+        { type: "batches", id: "all", label: "Lotes e Remessas de Pagamento" },
+      ],
+      context: getRequestContext(request),
+      details: {
+        deleted: deletedCounts,
+      },
+    })
+
     return NextResponse.json({
       success: true,
-      deleted: {
-        history: historyResult.count || 0,
-        expenses: expensesResult.count || 0,
-        batches: batchesResult.count || 0
-      }
+      deleted: deletedCounts,
     })
   } catch (error) {
     console.error("Erro ao limpar dados:", error)
