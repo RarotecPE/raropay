@@ -235,36 +235,6 @@ export async function GET(request: NextRequest) {
 </html>
     `
 
-    const { auditClient, getRequestContext } = await import("@/lib/audit")
-    auditClient.log({
-      category: "finance",
-      action: "report.exported",
-      severity: "INFO",
-      actor: {
-        type: "user",
-        userId: String(user.id),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-      targets: [
-        {
-          type: "financial_report",
-          id: `${startDate}_${endDate}`,
-          label: `Relatório de Despesas (${startDate} a ${endDate})`,
-        },
-      ],
-      context: getRequestContext(request),
-      details: {
-        start_date: startDate,
-        end_date: endDate,
-        status_filter: status,
-        expenses_count: expenses.length,
-        total_amount: totalAmount,
-        approved_amount: approvedAmount,
-      },
-    })
-
     // Retornar HTML que pode ser impresso como PDF pelo navegador
     return new NextResponse(html, {
       headers: {
