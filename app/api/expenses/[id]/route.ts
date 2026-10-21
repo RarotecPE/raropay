@@ -456,6 +456,7 @@ export async function PUT(
           municipality: updatedExpense.municipality ?? null,
           state: updatedExpense.state ?? null,
           status: updatedExpense.status,
+          hasReceipt: Boolean(updatedExpense.receipt_pathname),
           receipt_pathname: updatedExpense.receipt_pathname ?? null,
           ...(updatedExpense.odometer_photos ? { odometer_photos: updatedExpense.odometer_photos } : {}),
           exceeds_limit: exceedsLimit,
@@ -863,7 +864,8 @@ export async function DELETE(
           amount: Number(expense.amount),
           expense_date: expense.expense_date,
           status: expense.status,
-          receipt_pathname: expense.receipt_pathname ?? null,
+          hasReceipt: Boolean(expense.receipt_pathname),
+          removedReceiptPathname: expense.receipt_pathname ?? null,
           deleted_files_count: filesToDelete.length,
         },
       })

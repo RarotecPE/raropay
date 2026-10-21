@@ -493,6 +493,7 @@ export async function POST(request: NextRequest) {
           municipality: municipality || null,
           state: state || null,
           status: finalStatus,
+          hasReceipt: Boolean(created.receipt_pathname || receipt_pathname),
           receipt_pathname: created.receipt_pathname || receipt_pathname || null,
           ...(created.odometer_photos ? { odometer_photos: created.odometer_photos } : {}),
           exceeds_limit: exceedsLimit,
