@@ -264,6 +264,8 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
   const [loading, setLoading] = useState(false)
   const [loadingExpense, setLoadingExpense] = useState(mode === 'edit')
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [uploadingOdometer, setUploadingOdometer] = useState(false)
+  const isAnyUploading = uploadingFile || uploadingOdometer
   const [limits, setLimits] = useState<CategoryLimit[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   
@@ -1590,17 +1592,20 @@ if (odometerFiles.length >= 4) {
     const formData = new FormData()
     formData.append('file', file)
     
+    setUploadingOdometer(true)
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData
       })
-  const data = await response.json()
-  if (data.pathname) {
-  setOdometerFiles(prev => [...prev, { pathname: data.pathname, name: file.name }])
-  }
+      const data = await response.json()
+      if (data.pathname) {
+        setOdometerFiles(prev => [...prev, { pathname: data.pathname, name: file.name }])
+      }
     } catch (error) {
       console.error('Erro ao fazer upload do hodômetro:', error)
+    } finally {
+      setUploadingOdometer(false)
     }
   }
 
@@ -1721,6 +1726,10 @@ if (odometerFiles.length >= 4) {
   }
 
   async function handleSubmit(asDraft: boolean) {
+    if (isAnyUploading) {
+      toast.error('Aguarde o envio do comprovante antes de salvar.')
+      return
+    }
     setError('')
     
     // Validações básicas
@@ -4344,20 +4353,20 @@ Referência por pessoa: {formatCurrency(
                     type="button"
                     variant="outline"
                     onClick={() => handleSubmit(true)}
-                    disabled={loading}
+                    disabled={loading || isAnyUploading}
                     className="flex-1 h-12 sm:h-10 text-base sm:text-sm touch-manipulation"
                   >
-                    {loading ? <Spinner className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                    {loading || isAnyUploading ? <Spinner className="w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     <span className="hidden sm:inline">Salvar </span>Rascunho
                   </Button>
                   <Button
                     type="button"
                     onClick={() => handleSubmit(false)}
-                    disabled={loading}
+                    disabled={loading || isAnyUploading}
                     className="flex-1 h-12 sm:h-10 text-base sm:text-sm touch-manipulation"
                   >
-                    {loading ? <Spinner className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                    Processar
+                    {loading || isAnyUploading ? <Spinner className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                    {isAnyUploading ? 'Enviando anexo...' : 'Processar'}
                   </Button>
                 </div>
               </CardContent>
