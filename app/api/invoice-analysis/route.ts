@@ -169,7 +169,16 @@ export async function POST(request: Request) {
         employee_name: meta.employee_name || null,
         employee_email: meta.employee_email || null,
         subject,
+        hasAttachments: Array.isArray(attachments) && attachments.length > 0,
         attachments_count: Array.isArray(attachments) ? attachments.length : 0,
+        attachments: Array.isArray(attachments)
+          ? attachments.map((a: any) => ({
+              file_name: a.file_name,
+              file_path: a.file_path,
+              file_type: a.file_type,
+              file_size: a.file_size,
+            }))
+          : [],
         linked_expenses_count: Array.isArray(linked_expenses) ? linked_expenses.length : 0,
       },
     })

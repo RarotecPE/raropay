@@ -106,7 +106,16 @@ export async function POST(
         employee_id: analysisRequest.employee_id,
         employee_name: analysisRequest.employee_name || null,
         subject: analysisRequest.subject,
+        hasAttachments: Array.isArray(attachments) && attachments.length > 0,
         attachments_count: Array.isArray(attachments) ? attachments.length : 0,
+        attachments: Array.isArray(attachments)
+          ? attachments.map((a: any) => ({
+              file_name: a.file_name,
+              file_path: a.file_path,
+              file_type: a.file_type,
+              file_size: a.file_size,
+            }))
+          : [],
       },
     })
 
