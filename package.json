@@ -5,6 +5,7 @@
   "packageManager": "npm@10",
   "scripts": {
     "dev": "next dev --webpack -p 3003",
+    "dev:raronexus": "cd .. && cd raronexus && npm run dev",
     "build": "next build",
     "start": "next start -p 3003",
     "lint": "eslint ."

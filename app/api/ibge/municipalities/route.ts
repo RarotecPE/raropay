@@ -9,14 +9,23 @@ let raronexusAllData: any = null
 let raronexusCacheTime = 0
 const RARONEXUS_CACHE_TTL_MS = 60 * 60 * 1000
 
-const RARONEXUS_CONSTANTS_URL =
-  process.env.RARONEXUS_CONSTANTS_MUNICIPIOS_URL ||
-  'http://localhost:3000/api/constants/municipios'
+function getRaronexusConstantsUrl(): string {
+  if (process.env.RARONEXUS_CONSTANTS_MUNICIPIOS_URL) {
+    return process.env.RARONEXUS_CONSTANTS_MUNICIPIOS_URL.trim()
+  }
+
+  let baseUrl = (process.env.RARONEXUS_BASE_URL || 'http://localhost:3000').trim().replace(/\/+$/, '')
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    baseUrl = `https://${baseUrl}`
+  }
+
+  return `${baseUrl}/api/constants/municipios`
+}
 
 /**
  * Consulta a API oficial do IBGE contornando a rejeição de certificados ICP-Brasil no Node.js
  */
-function fetchIbgeMunicipalities(state: string, timeoutMs = 6000): Promise<{ id: number; name: string }[]> {
+function fetchIbgeMunicipalities(state: string, timeoutMs = 4000): Promise<{ id: number; name: string }[]> {
   return new Promise((resolve, reject) => {
     const url = `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${encodeURIComponent(state)}/municipios?orderBy=nome`
 
@@ -124,8 +133,10 @@ async function fetchRaronexusConstants(request: NextRequest): Promise<any> {
     headers['Cookie'] = `raronexus_global_session=${token}`
   }
 
+  const targetUrl = getRaronexusConstantsUrl()
+
   // Faz a requisição inicial com redirecionamento manual para preservar tokens se necessário
-  let res = await fetch(RARONEXUS_CONSTANTS_URL, {
+  let res = await fetch(targetUrl, {
     method: 'GET',
     headers,
     redirect: 'manual',
@@ -136,7 +147,7 @@ async function fetchRaronexusConstants(request: NextRequest): Promise<any> {
   if (res.status >= 300 && res.status < 400) {
     const location = res.headers.get('location')
     if (location) {
-      const redirectUrl = new URL(location, RARONEXUS_CONSTANTS_URL).toString()
+      const redirectUrl = new URL(location, targetUrl).toString()
       res = await fetch(redirectUrl, {
         method: 'GET',
         headers,
