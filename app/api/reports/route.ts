@@ -23,8 +23,11 @@ export async function GET(request: NextRequest) {
     // Funcionário comum é sempre restrito ao próprio id, ignorando qualquer employeeId recebido.
     const employeeId = isManagement ? searchParams.get("employeeId") : String(user.id)
 
-    const categories = categoriesParam ? categoriesParam.split(",") : null
-    const types = typesParam ? typesParam.split(",") : null
+    const categories = categoriesParam ? categoriesParam.split(",").filter(Boolean) : null
+    const types = typesParam ? typesParam.split(",").filter(Boolean) : null
+    const hasCategories = Boolean(categories && categories.length > 0)
+    const hasTypes = Boolean(types && types.length > 0)
+    const parsedEmployeeId = employeeId && employeeId !== 'all' ? parseInt(employeeId) : null
 
     // Mapear status para considerar ambos os idiomas (português e inglês)
     const statusMap: Record<string, string[]> = {
@@ -32,26 +35,11 @@ export async function GET(request: NextRequest) {
       'approved': ['aprovado', 'approved'],
       'rejeitado': ['rejeitado', 'rejected'],
       'rejected': ['rejeitado', 'rejected'],
-      'enviado': ['enviado', 'submitted', 'pending'],
-      'submitted': ['enviado', 'submitted', 'pending'],
-      'pending': ['enviado', 'submitted', 'pending'],
+      'enviado': ['enviado', 'submitted', 'pending', 'processed'],
+      'submitted': ['enviado', 'submitted', 'pending', 'processed'],
+      'pending': ['enviado', 'submitted', 'pending', 'processed'],
     }
     const statusValues = status !== 'all' ? (statusMap[status] || [status]) : null
-
-    // Construir condições de filtro
-    let baseCondition = `expense_date >= '${startDate}' AND expense_date <= '${endDate}'`
-    if (statusValues) {
-      baseCondition += ` AND status IN (${statusValues.map(s => `'${s}'`).join(",")})`
-    }
-    if (categories && categories.length > 0) {
-      baseCondition += ` AND category IN (${categories.map(c => `'${c}'`).join(",")})`
-    }
-    if (types && types.length > 0) {
-      baseCondition += ` AND expense_type IN (${types.map(t => `'${t}'`).join(",")})`
-    }
-    if (employeeId) {
-      baseCondition += ` AND user_id = ${parseInt(employeeId)}`
-    }
 
     // Resumo geral - considerar tanto status em português quanto em inglês
     // Inclui métricas estratégicas por tipo de liquidação (aprovado/rejeitado/pago)
@@ -59,7 +47,7 @@ export async function GET(request: NextRequest) {
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE status IN ('aprovado', 'approved')) as approved,
-        COUNT(*) FILTER (WHERE status IN ('enviado', 'submitted', 'pending')) as pending,
+        COUNT(*) FILTER (WHERE status IN ('enviado', 'submitted', 'pending', 'processed')) as pending,
         COUNT(*) FILTER (WHERE status IN ('rejeitado', 'rejected')) as rejected,
         COALESCE(SUM(amount), 0) as total_amount,
         COALESCE(SUM(amount) FILTER (WHERE status IN ('aprovado', 'approved')), 0) as approved_amount,
@@ -99,9 +87,11 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(amount) FILTER (WHERE expense_type IN ('reimbursement', 'refund', 'reembolso') AND status IN ('rejeitado', 'rejected')), 0) as reimbursement_rejected,
         COALESCE(SUM(amount) FILTER (WHERE expense_type IN ('reimbursement', 'refund', 'reembolso') AND status IN ('aprovado', 'approved') AND paid = true), 0) as reimbursement_paid
       FROM expenses
-      WHERE expense_date >= ${startDate} AND expense_date <= ${endDate}
-        AND (${!statusValues} OR status = ANY(${statusValues || []}::text[]))
-        AND (${employeeId}::int IS NULL OR user_id = ${employeeId ? parseInt(employeeId) : null}::int)
+      WHERE expense_date >= ${startDate}::date AND expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR status = ANY(${statusValues || []}::text[]))
+        AND (${!hasCategories}::boolean = true OR category = ANY(${categories || []}::text[]))
+        AND (${!hasTypes}::boolean = true OR expense_type = ANY(${types || []}::text[]))
+        AND (${parsedEmployeeId === null}::boolean = true OR user_id = ${parsedEmployeeId ?? 0})
     `
 
     // Por categoria
@@ -111,9 +101,11 @@ export async function GET(request: NextRequest) {
         COUNT(*) as count,
         COALESCE(SUM(amount), 0) as total
       FROM expenses
-      WHERE expense_date >= ${startDate} AND expense_date <= ${endDate}
-        AND (${!statusValues} OR status = ANY(${statusValues || []}::text[]))
-        AND (${employeeId}::int IS NULL OR user_id = ${employeeId ? parseInt(employeeId) : null}::int)
+      WHERE expense_date >= ${startDate}::date AND expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR status = ANY(${statusValues || []}::text[]))
+        AND (${!hasCategories}::boolean = true OR category = ANY(${categories || []}::text[]))
+        AND (${!hasTypes}::boolean = true OR expense_type = ANY(${types || []}::text[]))
+        AND (${parsedEmployeeId === null}::boolean = true OR user_id = ${parsedEmployeeId ?? 0})
       GROUP BY category
       ORDER BY total DESC
     `
@@ -125,9 +117,11 @@ export async function GET(request: NextRequest) {
         COUNT(*) as count,
         COALESCE(SUM(amount), 0) as total
       FROM expenses
-      WHERE expense_date >= ${startDate} AND expense_date <= ${endDate}
-        AND (${!statusValues} OR status = ANY(${statusValues || []}::text[]))
-        AND (${employeeId}::int IS NULL OR user_id = ${employeeId ? parseInt(employeeId) : null}::int)
+      WHERE expense_date >= ${startDate}::date AND expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR status = ANY(${statusValues || []}::text[]))
+        AND (${!hasCategories}::boolean = true OR category = ANY(${categories || []}::text[]))
+        AND (${!hasTypes}::boolean = true OR expense_type = ANY(${types || []}::text[]))
+        AND (${parsedEmployeeId === null}::boolean = true OR user_id = ${parsedEmployeeId ?? 0})
       GROUP BY expense_type
       ORDER BY total DESC
     `
@@ -139,9 +133,11 @@ export async function GET(request: NextRequest) {
         COUNT(*) as count,
         COALESCE(SUM(amount), 0) as total
       FROM expenses
-      WHERE expense_date >= ${startDate} AND expense_date <= ${endDate}
-        AND (${!statusValues} OR status = ANY(${statusValues || []}::text[]))
-        AND (${employeeId}::int IS NULL OR user_id = ${employeeId ? parseInt(employeeId) : null}::int)
+      WHERE expense_date >= ${startDate}::date AND expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR status = ANY(${statusValues || []}::text[]))
+        AND (${!hasCategories}::boolean = true OR category = ANY(${categories || []}::text[]))
+        AND (${!hasTypes}::boolean = true OR expense_type = ANY(${types || []}::text[]))
+        AND (${parsedEmployeeId === null}::boolean = true OR user_id = ${parsedEmployeeId ?? 0})
       GROUP BY TO_CHAR(expense_date, 'YYYY-MM')
       ORDER BY month
     `
@@ -153,8 +149,11 @@ export async function GET(request: NextRequest) {
         COUNT(*) as count,
         COALESCE(SUM(amount), 0) as total
       FROM expenses
-      WHERE expense_date >= ${startDate} AND expense_date <= ${endDate}
-        AND (${employeeId}::int IS NULL OR user_id = ${employeeId ? parseInt(employeeId) : null}::int)
+      WHERE expense_date >= ${startDate}::date AND expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR status = ANY(${statusValues || []}::text[]))
+        AND (${!hasCategories}::boolean = true OR category = ANY(${categories || []}::text[]))
+        AND (${!hasTypes}::boolean = true OR expense_type = ANY(${types || []}::text[]))
+        AND (${parsedEmployeeId === null}::boolean = true OR user_id = ${parsedEmployeeId ?? 0})
       GROUP BY status
       ORDER BY total DESC
     `
@@ -167,9 +166,11 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(e.amount), 0) as total
       FROM expenses e
       LEFT JOIN users u ON e.user_id = u.id
-      WHERE e.expense_date >= ${startDate} AND e.expense_date <= ${endDate}
-        AND (${status} = 'all' OR e.status = ${status})
-        AND (${employeeId}::int IS NULL OR e.user_id = ${employeeId ? parseInt(employeeId) : null}::int)
+      WHERE e.expense_date >= ${startDate}::date AND e.expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR e.status = ANY(${statusValues || []}::text[]))
+        AND (${!hasCategories}::boolean = true OR e.category = ANY(${categories || []}::text[]))
+        AND (${!hasTypes}::boolean = true OR e.expense_type = ANY(${types || []}::text[]))
+        AND (${parsedEmployeeId === null}::boolean = true OR e.user_id = ${parsedEmployeeId ?? 0})
       GROUP BY u.name
       ORDER BY total DESC
     `
@@ -178,7 +179,7 @@ export async function GET(request: NextRequest) {
     const expenses = await sql`
       SELECT 
         e.id,
-        e.expense_date,
+        TO_CHAR(e.expense_date, 'YYYY-MM-DD') as expense_date,
         e.category,
         e.expense_type,
         e.amount,
@@ -188,9 +189,11 @@ export async function GET(request: NextRequest) {
         u.name as user_name
       FROM expenses e
       LEFT JOIN users u ON e.user_id = u.id
-      WHERE e.expense_date >= ${startDate} AND e.expense_date <= ${endDate}
-        AND (${status} = 'all' OR e.status = ${status})
-        AND (${employeeId}::int IS NULL OR e.user_id = ${employeeId ? parseInt(employeeId) : null}::int)
+      WHERE e.expense_date >= ${startDate}::date AND e.expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR e.status = ANY(${statusValues || []}::text[]))
+        AND (${!hasCategories}::boolean = true OR e.category = ANY(${categories || []}::text[]))
+        AND (${!hasTypes}::boolean = true OR e.expense_type = ANY(${types || []}::text[]))
+        AND (${parsedEmployeeId === null}::boolean = true OR e.user_id = ${parsedEmployeeId ?? 0})
       ORDER BY e.expense_date DESC
       LIMIT 500
     `

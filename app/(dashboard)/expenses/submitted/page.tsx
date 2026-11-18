@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Empty } from '@/components/ui/empty'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
@@ -81,6 +82,8 @@ export default function ProcessedExpensesPage() {
   const [settlementTypeFilter, setSettlementTypeFilter] = useState('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [includeFuture, setIncludeFuture] = useState(false)
+  const [futureExpensesCount, setFutureExpensesCount] = useState(0)
   
   // Seleção e cache de selecionados
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
@@ -147,6 +150,7 @@ export default function ProcessedExpensesPage() {
       if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
       if (startDate) params.set('startDate', startDate)
       if (endDate) params.set('endDate', endDate)
+      if (includeFuture) params.set('include_future', 'true')
 
       const res = await fetch(`/api/expenses?${params.toString()}`)
       const json = await res.json()
@@ -156,6 +160,9 @@ export default function ProcessedExpensesPage() {
         setTotalPages(json.pagination.totalPages)
         setTotalCount(json.pagination.totalCount)
         setSummaryTotalAmount(Number(json.summary?.totalAmount || 0))
+        if (json.summary?.futureCount !== undefined) {
+          setFutureExpensesCount(Number(json.summary.futureCount))
+        }
         // Atualizar cache de itens carregados
         setSelectedCache(prev => {
           const map = new Map(prev)
@@ -184,7 +191,7 @@ export default function ProcessedExpensesPage() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, currentPage, pageSize, searchTerm, categoryFilter, settlementTypeFilter, startDate, endDate])
+  }, [user?.id, currentPage, pageSize, searchTerm, categoryFilter, settlementTypeFilter, startDate, endDate, includeFuture])
 
   useEffect(() => {
     fetchExpenses()
@@ -293,6 +300,7 @@ export default function ProcessedExpensesPage() {
       if (settlementTypeFilter !== 'all') params.set('settlement_type', settlementTypeFilter)
       if (startDate) params.set('startDate', startDate)
       if (endDate) params.set('endDate', endDate)
+      if (includeFuture) params.set('include_future', 'true')
 
       const res = await fetch(`/api/expenses?${params.toString()}`)
       if (res.ok) {
@@ -502,9 +510,9 @@ export default function ProcessedExpensesPage() {
         </Card>
       </div>
 
-      {/* Seleção */}
+      {/* Seleção e Flag de Parcelas Futuras */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2">
             <Checkbox
               checked={isCurrentPageAllSelected}
@@ -515,8 +523,46 @@ export default function ProcessedExpensesPage() {
               Selecionar todas desta página ({expenses.length} despesas)
             </Label>
           </div>
+
+          <div className="flex items-center gap-3 pt-2 sm:pt-0 border-t sm:border-t-0">
+            <Switch
+              id="include-future"
+              checked={includeFuture}
+              onCheckedChange={(checked) => {
+                setIncludeFuture(checked)
+                setCurrentPage(1)
+              }}
+            />
+            <Label htmlFor="include-future" className="text-sm cursor-pointer flex items-center gap-2">
+              <span>Incluir parcelas futuras nesta remessa</span>
+              {futureExpensesCount > 0 && !includeFuture && (
+                <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                  {futureExpensesCount} agendada{futureExpensesCount !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </Label>
+          </div>
         </CardContent>
       </Card>
+
+      {futureExpensesCount > 0 && !includeFuture && (
+        <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg text-sm text-amber-800 dark:text-amber-300">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span>
+              Você possui <strong>{futureExpensesCount} parcela{futureExpensesCount !== 1 ? 's' : ''} futura{futureExpensesCount !== 1 ? 's' : ''}</strong> agendada{futureExpensesCount !== 1 ? 's' : ''} para os próximos meses que não estão sendo exibidas.
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-xs font-medium h-7"
+            onClick={() => setIncludeFuture(true)}
+          >
+            Exibir e incluir
+          </Button>
+        </div>
+      )}
 
       <BulkSelectionBanner
         selectedCount={selectedIds.size}
@@ -685,6 +731,12 @@ export default function ProcessedExpensesPage() {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {selectedExpenses.some(e => e.expense_date && new Date(e.expense_date + 'T12:00:00Z') > new Date()) && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                <Clock className="w-4 h-4 shrink-0" />
+                <span>Esta remessa inclui parcela(s) com vencimento futuro antecipadas por você.</span>
+              </div>
+            )}
             {/* Resumo das despesas por tipo */}
             <div className="p-4 bg-muted/50 rounded-lg space-y-3">
               <h4 className="font-medium">Resumo por Tipo de Despesa</h4>

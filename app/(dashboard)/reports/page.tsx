@@ -200,8 +200,12 @@ export default function ReportsPage() {
     
     // Verificação segura - expenses pode não existir em dados antigos
     const expenses = reportData?.expenses
-    if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
+    if (!expenses || !Array.isArray(expenses)) {
       toast.error("Gere o relatório novamente para baixar o PDF com lista de despesas")
+      return
+    }
+    if (expenses.length === 0) {
+      toast.error("Não há despesas no período ou filtro selecionado para exportar no PDF")
       return
     }
     

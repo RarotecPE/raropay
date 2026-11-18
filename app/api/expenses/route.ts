@@ -2,6 +2,12 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getSession, canViewAllExpenses } from '@/lib/auth'
 import { parsePaginationParams, buildPaginationMeta } from '@/lib/pagination'
+import {
+  addMonthsToCompetence,
+  addMonthsToIsoDate,
+  buildExtraExpensesWithCompetence,
+  resolveInitialCompetence,
+} from '@/lib/competence'
 
 function safeJson(val: any) {
   if (!val) return null
@@ -33,6 +39,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate') || searchParams.get('end_date')
     const paidParam = searchParams.get('paid')
     const batchIdParam = searchParams.get('batch_id') || searchParams.get('batchId')
+    const includeFuture = searchParams.get('include_future') === 'true' || searchParams.get('includeFuture') === 'true'
 
     const canViewAll = canViewAllExpenses(session.role)
     const isDraft = status === 'draft'
@@ -95,6 +102,11 @@ export async function GET(request: NextRequest) {
           AND (${Boolean(startDate)}::boolean = false OR e.expense_date >= ${startDate ?? '1970-01-01'}::date)
           AND (${Boolean(endDate)}::boolean = false OR e.expense_date <= ${endDate ?? '2999-12-31'}::date)
           AND (
+            ${includeFuture}::boolean = true
+            OR ${status !== 'processed'}::boolean = true
+            OR COALESCE(e.extra_expenses->>'competence', TO_CHAR(e.expense_date, 'YYYY-MM')) <= TO_CHAR(CURRENT_DATE, 'YYYY-MM')
+          )
+          AND (
             ${paidParam === 'paid' || paidParam === 'true'}::boolean = false 
             OR e.paid = true
           )
@@ -145,6 +157,11 @@ export async function GET(request: NextRequest) {
             AND (${Boolean(startDate)}::boolean = false OR e.expense_date >= ${startDate ?? '1970-01-01'}::date)
             AND (${Boolean(endDate)}::boolean = false OR e.expense_date <= ${endDate ?? '2999-12-31'}::date)
             AND (
+              ${includeFuture}::boolean = true
+              OR ${status !== 'processed'}::boolean = true
+              OR COALESCE(e.extra_expenses->>'competence', TO_CHAR(e.expense_date, 'YYYY-MM')) <= TO_CHAR(CURRENT_DATE, 'YYYY-MM')
+            )
+            AND (
               ${paidParam === 'paid' || paidParam === 'true'}::boolean = false 
               OR e.paid = true
             )
@@ -165,6 +182,18 @@ export async function GET(request: NextRequest) {
         unpaidAmount = Number(countRes[0]?.unpaid_amount || 0)
       }
 
+      let futureCount = 0
+      if (status === 'processed') {
+        const [futureRes] = await sql`
+          SELECT COUNT(*)::int as count
+          FROM expenses e
+          WHERE (${targetUserId !== null}::boolean = false OR e.user_id = ${targetUserId ?? 0})
+            AND e.status = 'processed'
+            AND COALESCE(e.extra_expenses->>'competence', TO_CHAR(e.expense_date, 'YYYY-MM')) > TO_CHAR(CURRENT_DATE, 'YYYY-MM')
+        `
+        futureCount = Number(futureRes?.count || 0)
+      }
+
       const sanitizedData = expenses.map(({ full_count, full_amount, full_paid_count, full_unpaid_count, full_paid_amount, full_unpaid_amount, ...item }) => item)
 
       return NextResponse.json({
@@ -177,6 +206,7 @@ export async function GET(request: NextRequest) {
           unpaidCount,
           paidAmount,
           unpaidAmount,
+          futureCount,
         },
       })
     } else {
@@ -199,6 +229,11 @@ export async function GET(request: NextRequest) {
           AND (${parsedBatchId !== null}::boolean = false OR e.batch_id = ${parsedBatchId ?? 0})
           AND (${Boolean(startDate)}::boolean = false OR e.expense_date >= ${startDate ?? '1970-01-01'}::date)
           AND (${Boolean(endDate)}::boolean = false OR e.expense_date <= ${endDate ?? '2999-12-31'}::date)
+          AND (
+            ${includeFuture}::boolean = true
+            OR ${status !== 'processed'}::boolean = true
+            OR COALESCE(e.extra_expenses->>'competence', TO_CHAR(e.expense_date, 'YYYY-MM')) <= TO_CHAR(CURRENT_DATE, 'YYYY-MM')
+          )
           AND (
             ${paidParam === 'paid' || paidParam === 'true'}::boolean = false 
             OR e.paid = true
@@ -401,60 +436,103 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await sql`
-      INSERT INTO expenses (
-        user_id, expense_type, category, description, amount,
-        expense_date, municipality, state, status, receipt_pathname, location_type,
-        accommodation_name, accommodation_cnpj, checkin_date, checkout_date, daily_rate, 
-        is_capital, has_breakfast, nights_count,
-        single_room_qty, single_room_value, double_room_qty, double_room_value,
-        triple_room_qty, triple_room_value, extra_expenses, linked_employees, linked_external_parties,
-        meal_type, meal_time, establishment_name, establishment_cnpj, number_of_people,
-        vehicle_id, vehicle_plate, km_before, km_after, total_km, liters, 
-        fuel_type, gas_station_name, km_per_liter,
-        trip_type, departure_city, departure_state, arrival_city, arrival_state, stops, is_round_trip, is_irregular_route, odometer_photos,
-        origin_lat, origin_lng, origin_place, destination_lat, destination_lng, destination_place, route_distance_km, route_source,
-        parking_name, parking_cnpj, parking_type, parking_reason, entry_time, exit_time,
-        transport_type, transport_mode, transport_voucher_type, origin, destination, distance_km, estimated_distance,
-        store_type, store_name, items, purchase_reason, requester,
-        installments, current_installment,
-        made_by_self, made_by_employee_name, participated,
-        payment_barcode, pix_code,
-        third_party_name, third_party_cpf,
-        exceeds_limit, limit_exceeded_reason
-      ) VALUES (
-        ${session.id}, ${expense_type}, ${category}, ${description || null}, ${amount},
-        ${expense_date}, ${municipality || null}, ${state || null}, ${finalStatus}, ${receipt_pathname || null}, ${location_type || null},
-        ${accommodation_name || null}, ${accommodation_cnpj || null}, ${checkin_date || null}, ${checkout_date || null}, ${daily_rate || null},
-        ${is_capital || false}, ${has_breakfast || false}, ${nights_count || null},
-        ${single_room_qty || null}, ${single_room_value || null}, ${double_room_qty || null}, ${double_room_value || null},
-        ${triple_room_qty || null}, ${triple_room_value || null}, 
-        ${safeJson(extra_expenses) ? sql.json(safeJson(extra_expenses)) : null}, 
-        ${safeJson(linked_employees) ? sql.json(safeJson(linked_employees)) : null},
-        ${safeJson(linked_external_parties) ? sql.json(safeJson(linked_external_parties)) : null},
-        ${meal_type || null}, ${meal_time || null}, ${establishment_name || null}, ${establishment_cnpj || null}, ${number_of_people || null},
-        ${vehicle_id || null}, ${vehicle_plate || null}, ${km_before || null}, ${km_after || null}, ${total_km || calculatedTotalKm}, ${liters || null},
-        ${fuel_type || null}, ${gas_station_name || null}, ${calculatedKmPerLiter},
-        ${trip_type || null}, ${departure_city || null}, ${departure_state || null}, ${arrival_city || null}, ${arrival_state || null}, ${safeJson(stops) ? sql.json(safeJson(stops)) : null}, ${is_round_trip || false}, ${is_irregular_route || false}, ${safeJson(odometer_photos) ? sql.json(safeJson(odometer_photos)) : null},
-        ${origin_lat ?? null}, ${origin_lng ?? null}, ${origin_place || null}, ${destination_lat ?? null}, ${destination_lng ?? null}, ${destination_place || null}, ${route_distance_km ?? null}, ${route_source || null},
-        ${parking_name || null}, ${parking_cnpj || null}, ${parking_type || null}, ${parking_reason || null}, ${entry_time || null}, ${exit_time || null},
-        ${transport_type || null}, ${transport_mode || null}, ${transport_voucher_type || null}, ${origin || null}, ${destination || null}, ${distance_km || null}, ${estimated_distance || null},
-        ${store_type || null}, ${store_name || null}, ${safeJson(items) ? sql.json(safeJson(items)) : null}, ${purchase_reason || null}, ${requester || null},
-        ${installments || 1}, ${current_installment || 1},
-        ${made_by_self !== false}, ${made_by_employee_name || null}, ${participated !== false},
-        ${payment_barcode || null}, ${pix_code || null},
-        ${third_party_name || null}, ${third_party_cpf || null},
-        ${exceedsLimit}, ${limitExceededReason}
-      )
-      RETURNING *
-    `
+    const totalInstallments = Math.max(1, parseInt(String(installments || '1'), 10))
+    const totalAmountFloat = parseFloat(amount)
+    const totalCents = Math.round(totalAmountFloat * 100)
+    const baseCents = Math.floor(totalCents / totalInstallments)
+    const remainderCents = totalCents - (baseCents * totalInstallments)
 
-    await sql`
-      INSERT INTO expense_history (expense_id, action, user_id, new_status)
-      VALUES (${result[0].id}, 'Despesa criada', ${session.id}, ${finalStatus})
-    `
+    // Buscar faturas existentes para resolver a competência inicial
+    let existingInvoices: any[] = []
+    if (expense_type === 'corporate_card' || totalInstallments > 1) {
+      try {
+        existingInvoices = await sql`
+          SELECT id, reference_month, start_date, end_date
+          FROM card_invoices
+          ORDER BY start_date ASC
+        `
+      } catch (e) {
+        console.warn('[v0] Aviso ao consultar faturas para competência:', e)
+      }
+    }
 
-    return NextResponse.json(result[0], { status: 201 })
+    const initialCompetence = resolveInitialCompetence(expense_date, existingInvoices)
+    const createdExpenses: any[] = []
+
+    for (let i = 1; i <= totalInstallments; i++) {
+      const thisCompetence = addMonthsToCompetence(initialCompetence, i - 1)
+      const thisAmount = (i === 1 ? baseCents + remainderCents : baseCents) / 100
+      const thisExpenseDate = i === 1 ? expense_date : addMonthsToIsoDate(expense_date, i - 1)
+      const thisDescription = totalInstallments > 1
+        ? (description ? `${description} (Parcela ${i}/${totalInstallments})` : `Parcela ${i}/${totalInstallments}`)
+        : (description || null)
+
+      const baseExtraExpenses = safeJson(extra_expenses)
+      const thisExtraExpenses = (expense_type === 'corporate_card' || totalInstallments > 1)
+        ? buildExtraExpensesWithCompetence(baseExtraExpenses, thisCompetence)
+        : baseExtraExpenses
+
+      const result = await sql`
+        INSERT INTO expenses (
+          user_id, expense_type, category, description, amount,
+          expense_date, municipality, state, status, receipt_pathname, location_type,
+          accommodation_name, accommodation_cnpj, checkin_date, checkout_date, daily_rate, 
+          is_capital, has_breakfast, nights_count,
+          single_room_qty, single_room_value, double_room_qty, double_room_value,
+          triple_room_qty, triple_room_value, extra_expenses, linked_employees, linked_external_parties,
+          meal_type, meal_time, establishment_name, establishment_cnpj, number_of_people,
+          vehicle_id, vehicle_plate, km_before, km_after, total_km, liters, 
+          fuel_type, gas_station_name, km_per_liter,
+          trip_type, departure_city, departure_state, arrival_city, arrival_state, stops, is_round_trip, is_irregular_route, odometer_photos,
+          origin_lat, origin_lng, origin_place, destination_lat, destination_lng, destination_place, route_distance_km, route_source,
+          parking_name, parking_cnpj, parking_type, parking_reason, entry_time, exit_time,
+          transport_type, transport_mode, transport_voucher_type, origin, destination, distance_km, estimated_distance,
+          store_type, store_name, items, purchase_reason, requester,
+          installments, current_installment, total_installments, installment_number, installment_type,
+          made_by_self, made_by_employee_name, participated,
+          payment_barcode, pix_code,
+          third_party_name, third_party_cpf,
+          exceeds_limit, limit_exceeded_reason
+        ) VALUES (
+          ${session.id}, ${expense_type}, ${category}, ${thisDescription}, ${thisAmount},
+          ${thisExpenseDate}, ${municipality || null}, ${state || null}, ${finalStatus}, ${receipt_pathname || null}, ${location_type || null},
+          ${accommodation_name || null}, ${accommodation_cnpj || null}, ${checkin_date || null}, ${checkout_date || null}, ${daily_rate || null},
+          ${is_capital || false}, ${has_breakfast || false}, ${nights_count || null},
+          ${single_room_qty || null}, ${single_room_value || null}, ${double_room_qty || null}, ${double_room_value || null},
+          ${triple_room_qty || null}, ${triple_room_value || null}, 
+          ${thisExtraExpenses ? sql.json(thisExtraExpenses) : null}, 
+          ${safeJson(linked_employees) ? sql.json(safeJson(linked_employees)) : null},
+          ${safeJson(linked_external_parties) ? sql.json(safeJson(linked_external_parties)) : null},
+          ${meal_type || null}, ${meal_time || null}, ${establishment_name || null}, ${establishment_cnpj || null}, ${number_of_people || null},
+          ${vehicle_id || null}, ${vehicle_plate || null}, ${km_before || null}, ${km_after || null}, ${total_km || calculatedTotalKm}, ${liters || null},
+          ${fuel_type || null}, ${gas_station_name || null}, ${calculatedKmPerLiter},
+          ${trip_type || null}, ${departure_city || null}, ${departure_state || null}, ${arrival_city || null}, ${arrival_state || null}, ${safeJson(stops) ? sql.json(safeJson(stops)) : null}, ${is_round_trip || false}, ${is_irregular_route || false}, ${safeJson(odometer_photos) ? sql.json(safeJson(odometer_photos)) : null},
+          ${origin_lat ?? null}, ${origin_lng ?? null}, ${origin_place || null}, ${destination_lat ?? null}, ${destination_lng ?? null}, ${destination_place || null}, ${route_distance_km ?? null}, ${route_source || null},
+          ${parking_name || null}, ${parking_cnpj || null}, ${parking_type || null}, ${parking_reason || null}, ${entry_time || null}, ${exit_time || null},
+          ${transport_type || null}, ${transport_mode || null}, ${transport_voucher_type || null}, ${origin || null}, ${destination || null}, ${distance_km || null}, ${estimated_distance || null},
+          ${store_type || null}, ${store_name || null}, ${safeJson(items) ? sql.json(safeJson(items)) : null}, ${purchase_reason || null}, ${requester || null},
+          ${totalInstallments}, ${i}, ${totalInstallments}, ${i}, ${totalInstallments > 1 ? 'parcelado' : null},
+          ${made_by_self !== false}, ${made_by_employee_name || null}, ${participated !== false},
+          ${payment_barcode || null}, ${pix_code || null},
+          ${third_party_name || null}, ${third_party_cpf || null},
+          ${exceedsLimit}, ${limitExceededReason}
+        )
+        RETURNING *
+      `
+
+      const historyAction = totalInstallments > 1
+        ? `Despesa criada (Parcela ${i}/${totalInstallments} - Comp. ${thisCompetence})`
+        : 'Despesa criada'
+
+      await sql`
+        INSERT INTO expense_history (expense_id, action, user_id, new_status)
+        VALUES (${result[0].id}, ${historyAction}, ${session.id}, ${finalStatus})
+      `
+
+      createdExpenses.push(result[0])
+    }
+
+    return NextResponse.json(createdExpenses[0], { status: 201 })
   } catch (error) {
     console.error('[v0] Erro ao criar despesa:', error)
     return NextResponse.json({ error: 'Erro interno do servidor', details: String(error) }, { status: 500 })

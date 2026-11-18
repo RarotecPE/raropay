@@ -23,6 +23,12 @@ import { toast } from 'sonner'
 import { MunicipalityCombobox } from '@/components/municipality-combobox'
 import { LocationSearch, type GeoPlace } from '@/components/location-search'
 import { formatCurrency, formatCurrencyInput, parseCurrency, brazilianStates } from '@/lib/format'
+import {
+  addMonthsToCompetence,
+  formatCompetence,
+  resolveInitialCompetence,
+  type InvoicePeriodLike,
+} from '@/lib/competence'
 
 // Mapa carregado apenas no cliente (Leaflet depende de window)
 const RouteMap = dynamic(() => import('@/components/route-map'), {
@@ -120,10 +126,13 @@ const capitalCities = [
 function parseJsonArray<T = any>(val: any): T[] {
   if (!val) return []
   if (Array.isArray(val)) return val
+  if (typeof val === 'object' && Array.isArray(val.items)) return val.items
   if (typeof val === 'string') {
     try {
       const parsed = JSON.parse(val)
-      return Array.isArray(parsed) ? parsed : []
+      if (Array.isArray(parsed)) return parsed
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.items)) return parsed.items
+      return []
     } catch {
       return []
     }
@@ -476,6 +485,18 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
   const [currentInstallment, setCurrentInstallment] = useState('1')
   const [paymentBarcode, setPaymentBarcode] = useState('')
   const [paymentPix, setPaymentPix] = useState('')
+  const [invoicePeriods, setInvoicePeriods] = useState<InvoicePeriodLike[]>([])
+
+  useEffect(() => {
+    if (mode === 'create') {
+      fetch('/api/card-invoices?periods_only=true')
+        .then(res => (res.ok ? res.json() : []))
+        .then(data => {
+          if (Array.isArray(data)) setInvoicePeriods(data)
+        })
+        .catch(() => {})
+    }
+  }, [mode])
 
   // Identificação de quem efetuou/participou (apenas para relatório/controle gerencial)
   const [madeBySelf, setMadeBySelf] = useState(true)
@@ -4168,9 +4189,9 @@ Referência por pessoa: {formatCurrency(
               <CardTitle className="text-lg">Parcelas e Identificação</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Parcela</Label>
+                  <Label>Parcelas</Label>
                   <Select value={installments} onValueChange={(v) => {
                     setInstallments(v)
                     if (parseInt(currentInstallment) > parseInt(v)) {
@@ -4181,7 +4202,7 @@ Referência por pessoa: {formatCurrency(
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Única</SelectItem>
+                      <SelectItem value="1">Pagamento à vista / Única</SelectItem>
                       {[2,3,4,5,6,7,8,9,10,11,12].map(n => (
                         <SelectItem key={n} value={n.toString()}>{n}x</SelectItem>
                       ))}
@@ -4190,20 +4211,59 @@ Referência por pessoa: {formatCurrency(
                 </div>
                 {parseInt(installments) > 1 && (
                   <div className="space-y-2">
-                    <Label>Parcela Atual</Label>
-                    <Select value={currentInstallment} onValueChange={setCurrentInstallment}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: parseInt(installments) }, (_, i) => i + 1).map(n => (
-                          <SelectItem key={n} value={n.toString()}>{n}ª parcela</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Parcela</Label>
+                    {mode === 'create' ? (
+                      <div className="flex items-center h-10 px-3 rounded-md border bg-muted/50 text-sm text-muted-foreground">
+                        Serão geradas da 1ª à {installments}ª parcela
+                      </div>
+                    ) : (
+                      <Select value={currentInstallment} onValueChange={setCurrentInstallment}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: parseInt(installments) }, (_, i) => i + 1).map(n => (
+                            <SelectItem key={n} value={n.toString()}>{n}ª parcela</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 )}
               </div>
+
+              {mode === 'create' && parseInt(installments) > 1 && finalAmount > 0 && (() => {
+                const activeDate =
+                  category === 'food' ? mealDate :
+                  category === 'fuel' ? fuelDate :
+                  category === 'parking' ? parkingDate :
+                  category === 'transport' || category === 'transport_voucher' ? transportDate :
+                  category === 'office_supplies' ? officeDate :
+                  category === 'other' ? otherDate :
+                  category === 'meal_voucher' ? mealVoucherDate :
+                  expenseDate
+                const initialComp = resolveInitialCompetence(activeDate, invoicePeriods)
+                const numInst = parseInt(installments)
+                const compPreview = Array.from({ length: numInst }, (_, idx) => {
+                  const comp = addMonthsToCompetence(initialComp, idx)
+                  return `${idx + 1}ª: ${formatCompetence(comp)}`
+                }).join(' • ')
+
+                return (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-900 dark:text-blue-100 flex items-start gap-2.5">
+                    <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                      <p className="font-medium text-xs sm:text-sm">Lançamento automático de parcelas por competência</p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        O valor total de <strong>{formatCurrency(finalAmount)}</strong> será rateado em <strong>{installments} parcelas</strong> de aproximadamente <strong>{formatCurrency(finalAmount / numInst)}</strong>.
+                      </p>
+                      <p className="text-xs text-blue-800 dark:text-blue-200 font-medium pt-0.5">
+                        Competências previstas: {compPreview}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Identificação de quem efetuou / participou (somente controle gerencial) */}
               <div className="pt-2 border-t">

@@ -48,14 +48,18 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import Link from "next/link"
 import { formatCurrency, formatDate, getCategoryLabel, getExpenseTypeLabel, getStatusBadge } from "@/lib/format"
+import { extractExpenseCompetence, formatCompetence } from "@/lib/competence"
 
 function parseJsonArray<T = any>(val: any): T[] {
   if (!val) return []
   if (Array.isArray(val)) return val
+  if (typeof val === 'object' && Array.isArray(val.items)) return val.items
   if (typeof val === 'string') {
     try {
       const parsed = JSON.parse(val)
-      return Array.isArray(parsed) ? parsed : []
+      if (Array.isArray(parsed)) return parsed
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.items)) return parsed.items
+      return []
     } catch {
       return []
     }
@@ -899,11 +903,28 @@ export function ExpenseCard({
                     Aguardando Pagamento
                   </Badge>
                 )}
-  {expense.installments && expense.installments > 1 && (
-  <Badge variant="outline" className="text-xs">
-  Parcela {expense.current_installment || 1}/{expense.total_installments || expense.installments}
-  </Badge>
-  )}
+                {expense.installments && expense.installments > 1 && (
+                  <Badge variant="outline" className="text-xs">
+                    Parcela {expense.current_installment || 1}/{expense.total_installments || expense.installments}
+                  </Badge>
+                )}
+                {extractExpenseCompetence(expense) && (
+                  <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-300 dark:border-indigo-800">
+                    Comp: {formatCompetence(extractExpenseCompetence(expense))}
+                  </Badge>
+                )}
+                {(() => {
+                  const comp = extractExpenseCompetence(expense)
+                  const now = new Date()
+                  const currentComp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+                  const isFuture = comp ? comp > currentComp : (expense.expense_date ? new Date(expense.expense_date + 'T12:00:00Z') > now : false)
+                  return isFuture && !expense.batch_id ? (
+                    <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Futura
+                    </Badge>
+                  ) : null
+                })()}
               {expense.batch_id && (
                 <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
                   <FileText className="w-3 h-3 mr-1" />

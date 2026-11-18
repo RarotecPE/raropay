@@ -101,7 +101,7 @@ export async function GET(
 
     const requestId = parseInt(id)
     const analysisRequest = await sql`
-      SELECT iar.*, ci.start_date, ci.end_date
+      SELECT iar.*, ci.start_date, ci.end_date, ci.reference_month
       FROM invoice_analysis_requests iar
       JOIN card_invoices ci ON ci.id = iar.invoice_id
       WHERE iar.id = ${requestId}
@@ -124,13 +124,21 @@ export async function GET(
       ? requestData.end_date.split('T')[0]
       : (requestData.end_date instanceof Date ? requestData.end_date.toISOString().split('T')[0] : requestData.end_date)
 
+    const referenceMonth = requestData.reference_month
+
     const availableExpenses = await sql`
       SELECT e.*
       FROM expenses e
       WHERE e.user_id = ${requestData.employee_id}
         AND e.expense_type = 'corporate_card'
-        AND e.expense_date >= ${startDate}::date
-        AND e.expense_date <= ${endDate}::date
+        AND (
+          e.extra_expenses->>'competence' = ${referenceMonth}
+          OR (
+            e.extra_expenses->>'competence' IS NULL
+            AND e.expense_date >= ${startDate}::date
+            AND e.expense_date <= ${endDate}::date
+          )
+        )
         AND e.id NOT IN (
           SELECT expense_id FROM invoice_analysis_expenses WHERE request_id = ${requestId}
         )

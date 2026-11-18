@@ -17,12 +17,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
     }
 
-    // Apenas financeiro e admin podem acessar
+    const { searchParams } = new URL(request.url)
+
+    // Permitir que qualquer usuário autenticado consulte apenas os períodos/competências das faturas
+    if (searchParams.get("periods_only") === "true") {
+      const periods = await sql`
+        SELECT id, reference_month, reference_name, start_date, end_date
+        FROM card_invoices
+        ORDER BY start_date ASC
+      `
+      return NextResponse.json(periods)
+    }
+
+    // Apenas financeiro e admin podem acessar a listagem completa
     if (!['admin', 'financial'].includes(session.role)) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 })
     }
-
-    const { searchParams } = new URL(request.url)
     const pageParam = searchParams.get("page")
     const pageSizeParam = searchParams.get("pageSize") || searchParams.get("limit")
     const shouldPaginate = Boolean(pageParam || pageSizeParam || searchParams.get("paginate") === "true")

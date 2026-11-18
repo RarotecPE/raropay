@@ -26,16 +26,28 @@ export async function GET(request: Request) {
             FROM expenses e 
             WHERE e.user_id = ${user.id}
               AND e.expense_type = 'corporate_card'
-              AND e.expense_date >= ci.start_date 
-              AND e.expense_date <= ci.end_date
+              AND (
+                e.extra_expenses->>'competence' = ci.reference_month
+                OR (
+                  e.extra_expenses->>'competence' IS NULL
+                  AND e.expense_date >= ci.start_date 
+                  AND e.expense_date <= ci.end_date
+                )
+              )
           ) as my_expense_count,
           (
             SELECT COALESCE(SUM(e.amount), 0) 
             FROM expenses e 
             WHERE e.user_id = ${user.id}
               AND e.expense_type = 'corporate_card'
-              AND e.expense_date >= ci.start_date 
-              AND e.expense_date <= ci.end_date
+              AND (
+                e.extra_expenses->>'competence' = ci.reference_month
+                OR (
+                  e.extra_expenses->>'competence' IS NULL
+                  AND e.expense_date >= ci.start_date 
+                  AND e.expense_date <= ci.end_date
+                )
+              )
           ) as my_total_amount,
           COUNT(*) OVER()::int as full_count
         FROM card_invoices ci
@@ -43,8 +55,14 @@ export async function GET(request: Request) {
           SELECT 1 FROM expenses e 
           WHERE e.user_id = ${user.id}
             AND e.expense_type = 'corporate_card'
-            AND e.expense_date >= ci.start_date 
-            AND e.expense_date <= ci.end_date
+            AND (
+              e.extra_expenses->>'competence' = ci.reference_month
+              OR (
+                e.extra_expenses->>'competence' IS NULL
+                AND e.expense_date >= ci.start_date 
+                AND e.expense_date <= ci.end_date
+              )
+            )
         )
         ORDER BY ci.reference_month DESC
         LIMIT ${limit} OFFSET ${offset}
@@ -68,24 +86,42 @@ export async function GET(request: Request) {
           FROM expenses e 
           WHERE e.user_id = ${user.id}
             AND e.expense_type = 'corporate_card'
-            AND e.expense_date >= ci.start_date 
-            AND e.expense_date <= ci.end_date
+            AND (
+              e.extra_expenses->>'competence' = ci.reference_month
+              OR (
+                e.extra_expenses->>'competence' IS NULL
+                AND e.expense_date >= ci.start_date 
+                AND e.expense_date <= ci.end_date
+              )
+            )
         ) as my_expense_count,
         (
           SELECT COALESCE(SUM(e.amount), 0) 
           FROM expenses e 
           WHERE e.user_id = ${user.id}
             AND e.expense_type = 'corporate_card'
-            AND e.expense_date >= ci.start_date 
-            AND e.expense_date <= ci.end_date
+            AND (
+              e.extra_expenses->>'competence' = ci.reference_month
+              OR (
+                e.extra_expenses->>'competence' IS NULL
+                AND e.expense_date >= ci.start_date 
+                AND e.expense_date <= ci.end_date
+              )
+            )
         ) as my_total_amount
       FROM card_invoices ci
       WHERE EXISTS (
         SELECT 1 FROM expenses e 
         WHERE e.user_id = ${user.id}
           AND e.expense_type = 'corporate_card'
-          AND e.expense_date >= ci.start_date 
-          AND e.expense_date <= ci.end_date
+          AND (
+            e.extra_expenses->>'competence' = ci.reference_month
+            OR (
+              e.extra_expenses->>'competence' IS NULL
+              AND e.expense_date >= ci.start_date 
+              AND e.expense_date <= ci.end_date
+            )
+          )
       )
       ORDER BY ci.reference_month DESC
     `

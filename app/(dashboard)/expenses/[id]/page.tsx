@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/format'
+import { extractExpenseCompetence, formatCompetence } from '@/lib/competence'
 import { 
   categoryLabels, 
   expenseTypeLabels, 
@@ -458,13 +459,21 @@ return (
             }
           }
           
-          // Parse extra_expenses se for string
+          // Parse extra_expenses se for string ou objeto com items
           let extraExpenses: any[] = []
           if (expense.extra_expenses) {
             if (typeof expense.extra_expenses === 'string') {
-              try { extraExpenses = JSON.parse(expense.extra_expenses) } catch { extraExpenses = [] }
+              try {
+                const parsed = JSON.parse(expense.extra_expenses)
+                if (Array.isArray(parsed)) extraExpenses = parsed
+                else if (parsed && Array.isArray(parsed.items)) extraExpenses = parsed.items
+              } catch {
+                extraExpenses = []
+              }
             } else if (Array.isArray(expense.extra_expenses)) {
               extraExpenses = expense.extra_expenses
+            } else if (typeof expense.extra_expenses === 'object' && Array.isArray((expense.extra_expenses as any).items)) {
+              extraExpenses = (expense.extra_expenses as any).items
             }
           }
           
@@ -2055,9 +2064,10 @@ return (
                 Informações de Parcelamento
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
+            <CardContent className="grid gap-4 sm:grid-cols-3">
               <DetailItem icon={Hash} label="Parcela Atual" value={`${expense.current_installment || expense.installment_number || 1} de ${expense.installments || expense.total_installments || 1}`} highlight />
               <DetailItem icon={FileText} label="Tipo de Parcelamento" value={expense.installment_type ? (installmentTypeLabels[expense.installment_type] || expense.installment_type) : null} />
+              <DetailItem icon={Calendar} label="Competência" value={extractExpenseCompetence(expense) ? formatCompetence(extractExpenseCompetence(expense)) : null} />
             </CardContent>
           </Card>
         )}

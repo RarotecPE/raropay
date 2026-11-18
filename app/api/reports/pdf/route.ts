@@ -25,6 +25,17 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate") || new Date().toISOString().split('T')[0]
     const status = searchParams.get("status") || "all"
 
+    const statusMap: Record<string, string[]> = {
+      'aprovado': ['aprovado', 'approved'],
+      'approved': ['aprovado', 'approved'],
+      'rejeitado': ['rejeitado', 'rejected'],
+      'rejected': ['rejeitado', 'rejected'],
+      'enviado': ['enviado', 'submitted', 'pending', 'processed'],
+      'submitted': ['enviado', 'submitted', 'pending', 'processed'],
+      'pending': ['enviado', 'submitted', 'pending', 'processed'],
+    }
+    const statusValues = status !== 'all' ? (statusMap[status] || [status]) : null
+
     // Buscar despesas
     const expenses = await sql`
       SELECT 
@@ -32,8 +43,8 @@ export async function GET(request: NextRequest) {
         u.name as user_name
       FROM expenses e
       JOIN users u ON e.user_id = u.id
-      WHERE e.expense_date >= ${startDate} AND e.expense_date <= ${endDate}
-        AND (${status} = 'all' OR e.status = ${status})
+      WHERE e.expense_date >= ${startDate}::date AND e.expense_date <= ${endDate}::date
+        AND (${!statusValues}::boolean = true OR e.status = ANY(${statusValues || []}::text[]))
       ORDER BY e.expense_date DESC
     `
 

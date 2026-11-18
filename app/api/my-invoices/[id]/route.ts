@@ -32,15 +32,23 @@ export async function GET(
       ? invoice.end_date.split('T')[0]
       : (invoice.end_date instanceof Date ? invoice.end_date.toISOString().split('T')[0] : invoice.end_date)
 
-    // Buscar despesas do funcionário neste período
+    const referenceMonth = invoice.reference_month
+
+    // Buscar despesas do funcionário por competência ou período da fatura
     const expenses = await sql`
       SELECT *
-      FROM expenses
-      WHERE user_id = ${user.id}
-        AND expense_type = 'corporate_card'
-        AND expense_date >= ${startDate}::date
-        AND expense_date <= ${endDate}::date
-      ORDER BY expense_date DESC
+      FROM expenses e
+      WHERE e.user_id = ${user.id}
+        AND e.expense_type = 'corporate_card'
+        AND (
+          e.extra_expenses->>'competence' = ${referenceMonth}
+          OR (
+            e.extra_expenses->>'competence' IS NULL
+            AND e.expense_date >= ${startDate}::date
+            AND e.expense_date <= ${endDate}::date
+          )
+        )
+      ORDER BY e.expense_date DESC
     `
 
     // Calcular estatísticas

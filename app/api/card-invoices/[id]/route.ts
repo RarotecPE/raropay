@@ -36,14 +36,22 @@ export async function GET(
       ? invoice.end_date.split('T')[0]
       : (invoice.end_date instanceof Date ? invoice.end_date.toISOString().split('T')[0] : invoice.end_date)
 
-    // Buscar despesas de cartão corporativo no período da fatura
+    const referenceMonth = invoice.reference_month
+
+    // Buscar despesas de cartão corporativo por competência ou período da fatura
     const expenses = await sql`
       SELECT e.*, u.name as user_name
       FROM expenses e
       JOIN users u ON e.user_id = u.id
       WHERE e.expense_type = 'corporate_card'
-        AND e.expense_date >= ${startDate}::date
-        AND e.expense_date <= ${endDate}::date
+        AND (
+          e.extra_expenses->>'competence' = ${referenceMonth}
+          OR (
+            e.extra_expenses->>'competence' IS NULL
+            AND e.expense_date >= ${startDate}::date
+            AND e.expense_date <= ${endDate}::date
+          )
+        )
       ORDER BY e.expense_date DESC
     `
 
@@ -58,10 +66,16 @@ export async function GET(
         COALESCE(SUM(amount) FILTER (WHERE status IN ('pending', 'submitted', 'analysis')), 0) as pending_amount,
         COUNT(*) FILTER (WHERE status = 'rejected') as rejected_count,
         COALESCE(SUM(amount) FILTER (WHERE status = 'rejected'), 0) as rejected_amount
-      FROM expenses
-      WHERE expense_type = 'corporate_card'
-        AND expense_date >= ${startDate}::date
-        AND expense_date <= ${endDate}::date
+      FROM expenses e
+      WHERE e.expense_type = 'corporate_card'
+        AND (
+          e.extra_expenses->>'competence' = ${referenceMonth}
+          OR (
+            e.extra_expenses->>'competence' IS NULL
+            AND e.expense_date >= ${startDate}::date
+            AND e.expense_date <= ${endDate}::date
+          )
+        )
     `
 
     // Por funcionário
@@ -74,8 +88,14 @@ export async function GET(
       FROM expenses e
       JOIN users u ON e.user_id = u.id
       WHERE e.expense_type = 'corporate_card'
-        AND e.expense_date >= ${startDate}::date
-        AND e.expense_date <= ${endDate}::date
+        AND (
+          e.extra_expenses->>'competence' = ${referenceMonth}
+          OR (
+            e.extra_expenses->>'competence' IS NULL
+            AND e.expense_date >= ${startDate}::date
+            AND e.expense_date <= ${endDate}::date
+          )
+        )
       GROUP BY u.id, u.name
       ORDER BY total DESC
     `
@@ -86,10 +106,16 @@ export async function GET(
         category,
         COUNT(*) as count,
         COALESCE(SUM(amount), 0) as total
-      FROM expenses
-      WHERE expense_type = 'corporate_card'
-        AND expense_date >= ${startDate}::date
-        AND expense_date <= ${endDate}::date
+      FROM expenses e
+      WHERE e.expense_type = 'corporate_card'
+        AND (
+          e.extra_expenses->>'competence' = ${referenceMonth}
+          OR (
+            e.extra_expenses->>'competence' IS NULL
+            AND e.expense_date >= ${startDate}::date
+            AND e.expense_date <= ${endDate}::date
+          )
+        )
       GROUP BY category
       ORDER BY total DESC
     `
