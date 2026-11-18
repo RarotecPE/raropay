@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
     return callbackResponse({
       status: "success",
       mode,
-      message: "Autenticado com sucesso.",
+      message: "Redirecionando...",
       redirectTo: nextPath,
       token,
     })
@@ -157,7 +157,8 @@ function callbackResponse({
     <meta charset="utf-8" />
     <title>RaroNexus</title>
   </head>
-  <body>
+  <body style="background:#020617;color:#e2e8f0;font-family:Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
+    <p>${status === "success" ? "Redirecionando..." : message}</p>
     <script>
       const payload = ${payload};
       if (window.opener) {
