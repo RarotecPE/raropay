@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { mutate } from 'swr'
 import { MunicipalityCombobox } from '@/components/municipality-combobox'
 import { LocationSearch, type GeoPlace } from '@/components/location-search'
 import { formatCurrency, formatCurrencyInput, parseCurrency, brazilianStates } from '@/lib/format'
@@ -1959,6 +1960,8 @@ is_capital: locationType === 'capital',
 
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Erro ao salvar despesa')
+
+      void mutate('/api/geo/user-places')
 
       if (mode === 'edit') {
         toast.success('Despesa atualizada!')
