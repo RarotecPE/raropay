@@ -10,7 +10,7 @@ import {
 
 const MAX_RECENT_PLACES = 5
 const MAX_FAVORITE_PLACES = 30
-const TABLE_CACHE_FALSE_TTL_MS = 60_000
+const TABLE_CACHE_FALSE_TTL_MS = 3_000
 
 let hasFavoritesTableCache: { value: boolean; checkedAt: number } | null = null
 
@@ -94,8 +94,28 @@ async function saveFavoritesToFallback(userId: number, favorites: SavedPlace[]):
   await setSetting(getFallbackKey(userId), JSON.stringify(favorites.slice(0, MAX_FAVORITE_PLACES)), userId)
 }
 
+async function migrateFallbackFavoritesIfNeeded(userId: number): Promise<void> {
+  const fallbackItems = await listFavoritesFromFallback(userId)
+  if (fallbackItems.length === 0) return
+
+  for (const item of fallbackItems) {
+    await sql`
+      INSERT INTO user_favorite_places (
+        user_id, place_key, alias, name, label, lat, lng, city, state, type
+      ) VALUES (
+        ${userId}, ${item.key}, ${item.alias ?? null}, ${item.name}, ${item.label},
+        ${item.lat}, ${item.lng}, ${item.city}, ${item.state}, ${item.type}
+      )
+      ON CONFLICT (user_id, place_key) DO NOTHING
+    `
+  }
+
+  await sql`DELETE FROM app_settings WHERE key = ${getFallbackKey(userId)}`
+}
+
 export async function listUserFavoritePlaces(userId: number): Promise<SavedPlace[]> {
   if (await hasFavoritesTable()) {
+    await migrateFallbackFavoritesIfNeeded(userId)
     const rows = await sql`
       SELECT id, place_key, alias, name, label, lat, lng, city, state, type, created_at
       FROM user_favorite_places
