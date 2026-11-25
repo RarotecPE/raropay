@@ -2,6 +2,7 @@
 
 import { useState, useMemo, use, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { uploadFileToR2 } from "@/lib/client-upload"
 import useSWR, { mutate as swrMutate } from "swr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -262,20 +263,7 @@ export default function CardInvoiceDetailsPage({ params }: { params: Promise<{ i
 
     try {
       for (const file of Array.from(files)) {
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await fetch('/api/invoice-analysis/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Erro no upload')
-        }
-
-        const result = await response.json()
+        const result = await uploadFileToR2(file, '/api/invoice-analysis/upload')
         setUploadedFiles(prev => [...prev, result])
       }
       toast.success("Arquivo(s) enviado(s)")

@@ -24,6 +24,7 @@ import { mutate } from 'swr'
 import { MunicipalityCombobox } from '@/components/municipality-combobox'
 import { LocationSearch, type GeoPlace } from '@/components/location-search'
 import { formatCurrency, formatCurrencyInput, parseCurrency, brazilianStates } from '@/lib/format'
+import { uploadFileToR2 } from '@/lib/client-upload'
 import {
   addMonthsToCompetence,
   formatCompetence,
@@ -1602,27 +1603,20 @@ export default function ExpenseForm({ mode, initialData, expenseId }: ExpenseFor
   async function handleOdometerUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    
-if (odometerFiles.length >= 4) {
-  alert('Máximo de 4 arquivos do hodômetro permitidos')
-  return
-  }
-    
-    // Upload para Blob storage
-    const formData = new FormData()
-    formData.append('file', file)
-    
+
+    if (odometerFiles.length >= 4) {
+      alert('Máximo de 4 arquivos do hodômetro permitidos')
+      return
+    }
+
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-  const data = await response.json()
-  if (data.pathname) {
-  setOdometerFiles(prev => [...prev, { pathname: data.pathname, name: file.name }])
-  }
+      const data = await uploadFileToR2(file, '/api/upload')
+      if (data.pathname) {
+        setOdometerFiles(prev => [...prev, { pathname: data.pathname, name: data.file_name || file.name }])
+      }
     } catch (error) {
       console.error('Erro ao fazer upload do hodômetro:', error)
+      toast.error(error instanceof Error ? error.message : 'Erro ao fazer upload do hodômetro')
     }
   }
 
@@ -1656,19 +1650,9 @@ if (odometerFiles.length >= 4) {
 
     setUploadingFile(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao fazer upload')
-
-  setReceiptPathname(data.pathname) // Salvar pathname para usar com /api/file
-  setReceiptFileName(file.name)
+      const data = await uploadFileToR2(file, '/api/upload')
+      setReceiptPathname(data.pathname) // Salvar pathname para usar com /api/file
+      setReceiptFileName(data.file_name || file.name)
       toast.success('Comprovante anexado!')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao fazer upload')

@@ -2,6 +2,7 @@
 
 import { useState, useRef, use } from "react"
 import { useRouter } from "next/navigation"
+import { uploadFileToR2 } from "@/lib/client-upload"
 import useSWR, { mutate } from "swr"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -201,20 +202,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
 
     try {
       for (const file of Array.from(files)) {
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await fetch('/api/invoice-analysis/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Erro no upload')
-        }
-
-        const result = await response.json()
+        const result = await uploadFileToR2(file, '/api/invoice-analysis/upload')
         setUploadedFiles(prev => [...prev, result])
       }
       toast.success("Arquivo(s) enviado(s)")
@@ -329,19 +317,7 @@ export default function AnalysisDetailPage({ params }: { params: Promise<{ id: s
       let receiptPathname = editingExpense.receipt_pathname
       if (receiptFile) {
         setIsUploadingReceipt(true)
-        const formData = new FormData()
-        formData.append('file', receiptFile)
-
-        const uploadResponse = await fetch('/api/invoice-analysis/upload', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!uploadResponse.ok) {
-          throw new Error('Erro ao enviar comprovante')
-        }
-
-        const uploadResult = await uploadResponse.json()
+        const uploadResult = await uploadFileToR2(receiptFile, '/api/invoice-analysis/upload')
         receiptPathname = uploadResult.file_path
         setIsUploadingReceipt(false)
       }

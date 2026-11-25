@@ -1,5 +1,6 @@
 import "server-only"
 
+import crypto from "node:crypto"
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -127,6 +128,117 @@ async function bodyToWebStream(body: R2ObjectBody | undefined): Promise<Readable
   }
 
   throw new Error("Formato de stream R2 nao suportado")
+}
+
+function hmac(key: crypto.BinaryLike, data: string) {
+  return crypto.createHmac("sha256", key).update(data, "utf8").digest()
+}
+
+function sha256Hex(data: string) {
+  return crypto.createHash("sha256").update(data, "utf8").digest("hex")
+}
+
+function encodeS3URI(str: string) {
+  return encodeURIComponent(str)
+    .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/%2F/g, "/")
+}
+
+export function createPresignedPutUrl(pathname: string, expiresInSeconds = 600) {
+  const config = getConfig()
+  const normalized = normalizePathname(pathname)
+  const key = storageKey(normalized)
+  const urlObj = new URL(config.endpoint)
+  const host = urlObj.host
+
+  const now = new Date()
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "")
+  const dateStamp = amzDate.slice(0, 8)
+  const credentialScope = `${dateStamp}/auto/s3/aws4_request`
+  const canonicalUri = `/${encodeS3URI(config.bucket)}/${encodeS3URI(key)}`
+
+  const queryParams: Array<[string, string]> = [
+    ["X-Amz-Algorithm", "AWS4-HMAC-SHA256"],
+    ["X-Amz-Credential", `${config.accessKeyId}/${credentialScope}`],
+    ["X-Amz-Date", amzDate],
+    ["X-Amz-Expires", String(expiresInSeconds)],
+    ["X-Amz-SignedHeaders", "host"],
+  ]
+
+  const canonicalQueryString = queryParams
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join("&")
+
+  const canonicalHeaders = `host:${host}\n`
+  const signedHeaders = "host"
+  const payloadHash = "UNSIGNED-PAYLOAD"
+
+  const canonicalRequest = [
+    "PUT",
+    canonicalUri,
+    canonicalQueryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join("\n")
+
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest),
+  ].join("\n")
+
+  const kDate = hmac(`AWS4${config.secretAccessKey}`, dateStamp)
+  const kRegion = hmac(kDate, "auto")
+  const kService = hmac(kRegion, "s3")
+  const kSigning = hmac(kService, "aws4_request")
+  const signature = crypto.createHmac("sha256", kSigning).update(stringToSign, "utf8").digest("hex")
+
+  return {
+    uploadUrl: `${config.endpoint}${canonicalUri}?${canonicalQueryString}&X-Amz-Signature=${signature}`,
+    pathname: normalized,
+    url: publicUrlForPathname(normalized),
+  }
+}
+
+export async function putBuffer(pathname: string, buffer: Buffer, contentType?: string) {
+  const normalized = normalizePathname(pathname)
+  await getClient().send(new PutObjectCommand({
+    Bucket: getConfig().bucket,
+    Key: storageKey(normalized),
+    Body: buffer,
+    ContentType: contentType || "application/octet-stream",
+  }))
+
+  return {
+    pathname: normalized,
+    url: publicUrlForPathname(normalized),
+  }
+}
+
+export async function getFileBuffer(pathname: string): Promise<Buffer> {
+  const normalized = normalizePathname(pathname)
+  const result = await getClient().send(new GetObjectCommand({
+    Bucket: getConfig().bucket,
+    Key: storageKey(normalized),
+  }))
+
+  const body = result.Body as R2ObjectBody | undefined
+  if (body?.transformToByteArray) {
+    const bytes = await body.transformToByteArray()
+    return Buffer.from(bytes)
+  }
+
+  const stream = await bodyToWebStream(body)
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (value) chunks.push(value)
+  }
+  return Buffer.concat(chunks.map((c) => Buffer.from(c)))
 }
 
 export async function putFile(pathname: string, file: File) {
